@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  cbs-simulator:
+    build:
+      context: ./cbs-simulator
+      dockerfile: Dockerfile
+    container_name: cbs-simulator
+    restart: unless-stopped
+    ports:
+      - "4000:4000" 
+    networks:
+      - cbs-net
+
+networks:
+  cbs-net:
+    driver: bridge 

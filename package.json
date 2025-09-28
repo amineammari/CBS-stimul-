@@ -1,0 +1,14 @@
+{
+  "name": "cbs-middleware-monorepo",
+  "version": "1.0.0",
+  "description": "Monorepo for CBS Middleware services",
+  "scripts": {
+    "start": "concurrently \"npm start --prefix middleware\" \"npm start --prefix cbs-simulator\" \"npm start --prefix dashboard\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0"
+  },
+  "dependencies": {
+    "@opentelemetry/exporter-trace-otlp-grpc": "^0.203.0"
+  }
+}
