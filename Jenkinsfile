@@ -8,7 +8,7 @@ pipeline {
     environment {
         // Variables d'environnement pour SonarQube
         SONAR_SCANNER_HOME = tool 'SonarScanner'
-        SONAR_HOST_URL = 'http://localhost:9000' // Modifié en localhost car SonarQube est un conteneur Docker local ; ajustez si nécessaire (par ex., via docker network ou port mapping)
+        SONAR_HOST_URL = 'http://192.168.72.128:9000' // Modifié en localhost car SonarQube est un conteneur Docker local ; ajustez si nécessaire (par ex., via docker network ou port mapping)
         SONAR_LOGIN = credentials('sonarqube-token') // Correspond au credential dans la capture d'écran
 
         // Variables d'environnement pour Docker
