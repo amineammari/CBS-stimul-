@@ -4,28 +4,28 @@ pipeline {
     environment {
         // Variables d'environnement pour SonarQube
         SONAR_SCANNER_HOME = tool 'SonarScanner'
-        SONAR_HOST_URL = 'http://your-sonarqube-server:9000'
+        SONAR_HOST_URL = 'http://192.162.72.128:9000'
         SONAR_LOGIN = credentials('sonarqube-token') // Assurez-vous que ce credential est configuré dans Jenkins
 
         // Variables d'environnement pour Docker
-        DOCKER_REGISTRY = 'your-docker-registry' // Ex: docker.io/yourusername
+        DOCKER_REGISTRY = 'docker.io/ammariamine' // Ex: docker.io/yourusername
         DOCKER_CREDENTIALS_ID = 'docker-hub-credentials' // Assurez-vous que ce credential est configuré dans Jenkins
 
         // Variables d'environnement pour Kubernetes
-        KUBECONFIG_CREDENTIAL_ID = 'kubeconfig-credentials' // Assurez-vous que ce credential est configuré dans Jenkins
-        K8S_NAMESPACE = 'default'
+        //  KUBECONFIG_CREDENTIAL_ID = 'kubeconfig-credentials' // Assurez-vous que ce credential est configuré dans Jenkins
+        // K8S_NAMESPACE = 'default'
 
         // Variables pour OWASP ZAP
         ZAP_API_KEY = credentials('owasp-zap-api-key') // Assurez-vous que ce credential est configuré dans Jenkins
         ZAP_HOST = 'localhost' // L'hôte où ZAP est accessible depuis le pod Jenkins ou l'agent
-        ZAP_PORT = '8080'
+        ZAP_PORT = '8081'
     }
 
     stages {
         stage('Checkout Code') {
             steps {
                 script {
-                    git branch: 'main', credentialsId: 'github-credentials', url: 'https://github.com/amineammari/CBS-stimul-'
+                    git branch: 'main', credentialsId: 'jenkins-github', url: 'https://github.com/amineammari/CBS-stimul-'
                 }
             }
         }
