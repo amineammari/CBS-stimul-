@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dashboard
+  labels:
+    app: dashboard
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dashboard
+  template:
+    metadata:
+      labels:
+        app: dashboard
+    spec:
+      containers:
+      - name: dashboard
+        image: ${DOCKER_REGISTRY}/dashboard:latest # L'image sera construite et poussée par Jenkins
+        ports:
+        - containerPort: 3000 # Port par défaut pour les applications React
+        env:
+        - name: PORT
+          value: "3000"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dashboard-service
+spec:
+  selector:
+    app: dashboard
+  ports:
+    - protocol: TCP
+      port: 3000
+      targetPort: 3000
+  type: LoadBalancer # Exposer le tableau de bord à l'extérieur du cluster
+
