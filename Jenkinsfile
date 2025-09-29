@@ -29,7 +29,7 @@ pipeline {
         stage('Checkout Code') {
             steps {
                 script {
-                    git branch: 'main', credentialsId: 'jenkins-github', url: 'https://github.com/amineammari/CBS-stimul' // URL corrigée (supposition basée sur le nom ; veuillez confirmer l'URL exacte)
+                    git branch: 'main', credentialsId: 'jenkins-github', url: 'https://github.com/amineammari/CBS-stimul-.git' // URL corrigée (supposition basée sur le nom ; veuillez confirmer l'URL exacte)
                 }
             }
         }
