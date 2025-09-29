@@ -3,7 +3,7 @@ agent any
 environment {
 // Variables d'environnement pour SonarQube
 SONAR_SCANNER_HOME = tool 'SonarScanner'
-SONAR_HOST_URL = 'http://localhost:9000' // Assurez-vous que SonarQube est accessible depuis Jenkins (utilisez le nom du conteneur ou l'IP si nécessaire, ex: http://sonarqube:9000 si lié par network)
+SONAR_HOST_URL = 'http://192.168.72.128:9000' // Assurez-vous que SonarQube est accessible depuis Jenkins (utilisez le nom du conteneur ou l'IP si nécessaire, ex: http://sonarqube:9000 si lié par network)
 SONAR_LOGIN = credentials('sonarqube-token') // Le token SonarQube (credential de type Secret Text)
 // Variables d'environnement pour Docker
 DOCKER_REGISTRY = 'ammariamine' // Votre username Docker Hub
