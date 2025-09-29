@@ -1,23 +1,27 @@
 pipeline {
     agent any
 
+    tools {
+        nodejs 'NodeJS' // Assurez-vous d'avoir configuré un outil NodeJS dans Jenkins Global Tool Configuration
+    }
+
     environment {
         // Variables d'environnement pour SonarQube
         SONAR_SCANNER_HOME = tool 'SonarScanner'
-        SONAR_HOST_URL = 'http://192.162.72.128:9000'
-        SONAR_LOGIN = credentials('sonarqube-token') // Assurez-vous que ce credential est configuré dans Jenkins
+        SONAR_HOST_URL = 'http://localhost:9000' // Modifié en localhost car SonarQube est un conteneur Docker local ; ajustez si nécessaire (par ex., via docker network ou port mapping)
+        SONAR_LOGIN = credentials('sonarqube-token') // Correspond au credential dans la capture d'écran
 
         // Variables d'environnement pour Docker
-        DOCKER_REGISTRY = 'docker.io/ammariamine' // Ex: docker.io/yourusername
-        DOCKER_CREDENTIALS_ID = 'docker-hub-credentials' // Assurez-vous que ce credential est configuré dans Jenkins
+        DOCKER_REGISTRY = 'ammariamine' // Simplifié pour Docker Hub ; préfixe 'docker.io/' non nécessaire pour le registry
+        DOCKER_CREDENTIALS_ID = 'docker-hub-creds' // Correspond au credential dans la capture d'écran (note : c'est 'docker-hub-creds', pas 'docker-hub-credentials' comme dans le code original)
 
         // Variables d'environnement pour Kubernetes
-        //  KUBECONFIG_CREDENTIAL_ID = 'kubeconfig-credentials' // Assurez-vous que ce credential est configuré dans Jenkins
-        // K8S_NAMESPACE = 'default'
+        KUBECONFIG_CREDENTIAL_ID = 'kubeconfig-credentials' // Décommentez et configurez ce credential dans Jenkins (fichier kubeconfig uploadé comme credential de type 'Secret file')
+        K8S_NAMESPACE = 'default'
 
         // Variables pour OWASP ZAP
-        ZAP_API_KEY = credentials('owasp-zap-api-key') // Assurez-vous que ce credential est configuré dans Jenkins
-        ZAP_HOST = 'localhost' // L'hôte où ZAP est accessible depuis le pod Jenkins ou l'agent
+        ZAP_API_KEY = credentials('owasp-zap-api-key') // Correspond au credential dans la capture d'écran
+        ZAP_HOST = 'localhost' // Assurez-vous que le conteneur ZAP est mappé sur ce port et accessible depuis Jenkins
         ZAP_PORT = '8081'
     }
 
@@ -25,7 +29,7 @@ pipeline {
         stage('Checkout Code') {
             steps {
                 script {
-                    git branch: 'main', credentialsId: 'jenkins-github', url: 'https://github.com/amineammari/CBS-stimul-'
+                    git branch: 'main', credentialsId: 'jenkins-github', url: 'https://github.com/amineammari/CBS-stimul' // URL corrigée (supposition basée sur le nom ; veuillez confirmer l'URL exacte)
                 }
             }
         }
@@ -33,9 +37,8 @@ pipeline {
         stage('Code Quality Analysis (SonarQube)') {
             steps {
                 script {
-                    // Exécuter l'analyse SonarQube pour chaque composant si nécessaire, ou une analyse globale
-                    // Pour cet exemple, nous allons supposer une analyse globale ou pour le composant principal
-                    // Le projet est un projet Node.js, donc nous devons nous assurer que SonarScanner est configuré pour analyser JS/TS.
+                    // Pour un projet Node.js multi-modules, analysez chaque module séparément ou configurez un sonar-project.properties pour multi-modules
+                    // Ici, analyse globale ; ajoutez -Dsonar.language=js si nécessaire, mais Sonar détecte automatiquement
                     withSonarQubeEnv(credentialsId: 'sonarqube-token', installationName: 'SonarQube') {
                         sh """
                             ${SONAR_SCANNER_HOME}/bin/sonar-scanner \
@@ -49,11 +52,7 @@ pipeline {
             }
             post {
                 always {
-                    // SonarQube ne génère pas de rapport localement par défaut, il publie sur le serveur.
-                    // Pour archiver un rapport, il faudrait utiliser un plugin SonarQube pour Jenkins qui génère un rapport local
-                    // ou utiliser l'API SonarQube pour télécharger un rapport après l'analyse.
-                    // Pour la démonstration, nous allons créer un fichier placeholder.
-                    sh 'echo "SonarQube analysis completed. See results on ${SONAR_HOST_URL}" > sonarqube-report.txt'
+                    sh 'echo "SonarQube analysis completed. See results at ${SONAR_HOST_URL}/dashboard?id=CBS-stimul" > sonarqube-report.txt'
                     archiveArtifacts artifacts: 'sonarqube-report.txt', fingerprint: true
                 }
             }
@@ -62,10 +61,26 @@ pipeline {
         stage('Dependency Audit (npm audit)') {
             steps {
                 script {
-                    // Exécuter npm audit pour chaque service Node.js
-                    sh 'cd cbs-simulator && npm install && npm audit --json > ../cbs-simulator-npm-audit.json'
-                    sh 'cd middleware && npm install && npm audit --json > ../middleware-npm-audit.json'
-                    sh 'cd dashboard && npm install && npm audit --json > ../dashboard-npm-audit.json'
+                    // Utilisez l'outil NodeJS pour garantir que npm est disponible
+                    // Assumez que les répertoires existent ; npm install est nécessaire pour générer package-lock.json si absent
+                    dir('cbs-simulator') {
+                        nodejs(nodeJSInstallationName: 'NodeJS') {
+                            sh 'npm install'
+                            sh 'npm audit --json > ../cbs-simulator-npm-audit.json'
+                        }
+                    }
+                    dir('middleware') {
+                        nodejs(nodeJSInstallationName: 'NodeJS') {
+                            sh 'npm install'
+                            sh 'npm audit --json > ../middleware-npm-audit.json'
+                        }
+                    }
+                    dir('dashboard') {
+                        nodejs(nodeJSInstallationName: 'NodeJS') {
+                            sh 'npm install'
+                            sh 'npm audit --json > ../dashboard-npm-audit.json'
+                        }
+                    }
                 }
             }
             post {
@@ -75,22 +90,21 @@ pipeline {
             }
         }
 
-        stage('Docker Build') {
+        stage('Docker Build & Push') {
             steps {
                 script {
-                    // Construire l'image cbs-simulator
-                    sh "docker build -t ${DOCKER_REGISTRY}/cbs-simulator:latest ./cbs-simulator"
-                    sh "docker push ${DOCKER_REGISTRY}/cbs-simulator:latest"
+                    // Utilisez withDockerRegistry pour gérer le login/push de manière sécurisée
+                    withDockerRegistry(credentialsId: "${DOCKER_CREDENTIALS_ID}", url: 'https://index.docker.io/v1/') {
+                        // Construire et push pour chaque image ; assumez que les Dockerfiles existent dans les répertoires respectifs
+                        sh "docker build -t ${DOCKER_REGISTRY}/cbs-simulator:latest ./cbs-simulator"
+                        sh "docker push ${DOCKER_REGISTRY}/cbs-simulator:latest"
 
-                    // Construire l'image middleware (nécessite un Dockerfile, que nous devrons créer)
-                    // Pour l'instant, nous allons simuler la construction.
-                    // TODO: Créer un Dockerfile pour middleware
-                    sh "docker build -t ${DOCKER_REGISTRY}/middleware:latest ./middleware"
-                    sh "docker push ${DOCKER_REGISTRY}/middleware:latest"
+                        sh "docker build -t ${DOCKER_REGISTRY}/middleware:latest ./middleware"
+                        sh "docker push ${DOCKER_REGISTRY}/middleware:latest"
 
-                    // Construire l'image dashboard
-                    sh "docker build -t ${DOCKER_REGISTRY}/dashboard:latest ./dashboard"
-                    sh "docker push ${DOCKER_REGISTRY}/dashboard:latest"
+                        sh "docker build -t ${DOCKER_REGISTRY}/dashboard:latest ./dashboard"
+                        sh "docker push ${DOCKER_REGISTRY}/dashboard:latest"
+                    }
                 }
             }
         }
@@ -98,11 +112,12 @@ pipeline {
         stage('Image Security Scan (Docker Scout)') {
             steps {
                 script {
-                    // Simuler l'analyse Docker Scout. En réalité, cela nécessiterait l'installation de Docker Scout CLI.
-                    // Pour la démonstration, nous allons créer des fichiers placeholder.
-                    sh 'echo "Docker Scout scan for cbs-simulator completed." > cbs-simulator-docker-scout-report.txt'
-                    sh 'echo "Docker Scout scan for middleware completed." > middleware-docker-scout-report.txt'
-                    sh 'echo "Docker Scout scan for dashboard completed." > dashboard-docker-scout-report.txt'
+                    // Commandes réelles pour Docker Scout (assumez que 'docker scout' est disponible dans le CLI Docker sur l'agent Jenkins)
+                    // Si Docker Scout est un conteneur séparé, utilisez 'docker run' pour l'exécuter
+                    // Exemple : scan pour CVE et sortie en texte ; ajustez pour SARIF ou autre format si needed
+                    sh "docker scout cve ${DOCKER_REGISTRY}/cbs-simulator:latest --output cbs-simulator-docker-scout-report.txt"
+                    sh "docker scout cve ${DOCKER_REGISTRY}/middleware:latest --output middleware-docker-scout-report.txt"
+                    sh "docker scout cve ${DOCKER_REGISTRY}/dashboard:latest --output dashboard-docker-scout-report.txt"
                 }
             }
             post {
@@ -112,37 +127,39 @@ pipeline {
             }
         }
 
+        stage('Deployment to Test Env') {
+            steps {
+                script {
+                    // Déployer d'abord dans un namespace de test pour permettre le scan DAST
+                    withCredentials([file(credentialsId: "${KUBECONFIG_CREDENTIAL_ID}", variable: 'KUBECONFIG')]) {
+                        sh "kubectl --kubeconfig=${KUBECONFIG} apply -f kubernetes/cbs-simulator-deployment.yaml -n ${K8S_NAMESPACE}"
+                        sh "kubectl --kubeconfig=${KUBECONFIG} apply -f kubernetes/middleware-deployment.yaml -n ${K8S_NAMESPACE}"
+                        sh "kubectl --kubeconfig=${KUBECONFIG} apply -f kubernetes/dashboard-deployment.yaml -n ${K8S_NAMESPACE}"
+                        
+                        // Attendre que les déploiements soient prêts (ajoutez un timeout ou un meilleur wait si nécessaire)
+                        sh "kubectl --kubeconfig=${KUBECONFIG} rollout status deployment/cbs-simulator -n ${K8S_NAMESPACE}"
+                        sh "kubectl --kubeconfig=${KUBECONFIG} rollout status deployment/middleware -n ${K8S_NAMESPACE}"
+                        sh "kubectl --kubeconfig=${KUBECONFIG} rollout status deployment/dashboard -n ${K8S_NAMESPACE}"
+                    }
+                }
+            }
+        }
+
         stage('Dynamic Security Testing (OWASP ZAP)') {
             steps {
                 script {
-                    // Déployer temporairement l'application pour ZAP, puis exécuter l'analyse.
-                    // Ceci est un placeholder. La logique de déploiement temporaire et d'exécution de ZAP serait plus complexe.
-                    // Il faudrait un pod ZAP qui scanne l'application déployée sur Kubernetes.
-                    sh 'echo "OWASP ZAP scan started..."'
-                    // Exemple de commande ZAP CLI (nécessite un ZAP en cours d'exécution et accessible)
-                    // sh "zap-cli --zap-url http://${ZAP_HOST}:${ZAP_PORT} --api-key ${ZAP_API_KEY} spider http://your-app-url"
-                    // sh "zap-cli --zap-url http://${ZAP_HOST}:${ZAP_PORT} --api-key ${ZAP_API_KEY} active-scan http://your-app-url"
-                    // sh "zap-cli --zap-url http://${ZAP_HOST}:${ZAP_PORT} --api-key ${ZAP_API_KEY} report -o owasp-zap-report.html -f html"
-                    sh 'echo "OWASP ZAP scan completed. Generating report." > owasp-zap-report.html'
+                    // Assumez que ZAP est en mode API (démarré avec -config api.disablekey=false -config api.key=${ZAP_API_KEY})
+                    // et que l'app est accessible via une URL locale (ex: via NodePort ou port-forward)
+                    // Vous devez port-forward les services K8s ou utiliser des ingresses pour exposer les URLs
+                    // Exemple simplifié : utilisez zap-cli (installez-le via pip dans l'agent si nécessaire)
+                    // Remplacez 'http://your-app-url' par l'URL réelle de l'app déployée (ex: http://localhost:3000 pour dashboard)
+                    sh 'zap-cli --zap-url http://${ZAP_HOST}:${ZAP_PORT} --api-key ${ZAP_API_KEY} quick-scan --self-contained --start-options "-config api.disablekey=false" http://your-app-url'
+                    sh 'zap-cli --zap-url http://${ZAP_HOST}:${ZAP_PORT} --api-key ${ZAP_API_KEY} report -o owasp-zap-report.html -f html'
                 }
             }
             post {
                 always {
                     archiveArtifacts artifacts: 'owasp-zap-report.html', fingerprint: true
-                }
-            }
-        }
-
-        stage('Deployment') {
-            steps {
-                script {
-                    // Appliquer les manifestes Kubernetes
-                    // Nécessite kubectl configuré et les manifestes créés.
-                    withCredentials([kubeconfig(credentialsId: KUBECONFIG_CREDENTIAL_ID)]) {
-                        sh "kubectl --kubeconfig=$KUBECONFIG apply -f kubernetes/cbs-simulator-deployment.yaml -n ${K8S_NAMESPACE}"
-                        sh "kubectl --kubeconfig=$KUBECONFIG apply -f kubernetes/middleware-deployment.yaml -n ${K8S_NAMESPACE}"
-                        sh "kubectl --kubeconfig=$KUBECONFIG apply -f kubernetes/dashboard-deployment.yaml -n ${K8S_NAMESPACE}"
-                    }
                 }
             }
         }
@@ -154,8 +171,7 @@ pipeline {
         }
         failure {
             echo 'Pipeline failed.'
-            // Envoyer une notification par email ou Slack en cas d'échec
+            // Ajoutez emailext ou slackSend pour notifications si plugins configurés
         }
     }
 }
-
