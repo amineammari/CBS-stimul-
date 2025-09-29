@@ -32,7 +32,7 @@ pipeline {
             steps {
                 script {
                     // Utilisez withSonarQubeEnv pour injecter le token et l'URL configurés globalement
-                    withSonarQubeEnv('SonarQube') { // 'SonarQube' doit être le nom configuré dans Manage Jenkins > Configure System > SonarQube servers
+                    withSonarQubeEnv('sonarqube') { // 'SonarQube' doit être le nom configuré dans Manage Jenkins > Configure System > SonarQube servers
                         sh """
                             ${SONAR_SCANNER_HOME}/bin/sonar-scanner \
                                 -Dsonar.projectKey=CBS-stimul \
