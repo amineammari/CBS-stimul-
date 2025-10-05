@@ -62,7 +62,7 @@ pipeline {
 
         stage('Docker Build & Push') {
             steps {
-                withDockerRegistry(credentialsId: "${DOCKER_CREDENTIALS_ID}", url: 'https://index.docker.io/v1/') {
+                withDockerRegistry(credentialsId: "${docker-hub-creds}", url: 'https://index.docker.io/v1/') {
                     script {
                         def apps = ['cbs-simulator', 'middleware', 'dashboard']
                         for (app in apps) {
