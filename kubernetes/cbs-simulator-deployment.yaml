@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: cbs-simulator
-        image: ${DOCKER_REGISTRY}/cbs-simulator:latest # L'image sera construite et poussée par Jenkins
+        image: ammariamine/cbs-simulator:latest # L'image sera construite et poussée par Jenkins
         ports:
         - containerPort: 4000
         env:

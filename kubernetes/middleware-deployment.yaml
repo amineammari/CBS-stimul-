@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: middleware
-        image: ${DOCKER_REGISTRY}/middleware:latest # L'image sera construite et poussée par Jenkins
+        image: ammariamine/middleware:latest # L'image sera construite et poussée par Jenkins
         ports:
         - containerPort: 3000 # Port par défaut pour les applications Node.js/Express
         env:
