@@ -1,3 +1,4 @@
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -16,9 +17,10 @@ spec:
     spec:
       containers:
       - name: dashboard
-        image: ammariamine/dashboard:latest # L'image sera construite et poussée par Jenkins
+        image: ammariamine/dashboard:latest
+        imagePullPolicy: IfNotPresent
         ports:
-        - containerPort: 3000 # Port par défaut pour les applications React
+        - containerPort: 3000
         env:
         - name: PORT
           value: "3000"
@@ -34,5 +36,4 @@ spec:
     - protocol: TCP
       port: 3000
       targetPort: 3000
-  type: LoadBalancer # Exposer le tableau de bord à l'extérieur du cluster
-
+  type: LoadBalancer

@@ -1,3 +1,4 @@
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -16,9 +17,10 @@ spec:
     spec:
       containers:
       - name: middleware
-        image: ammariamine/middleware:latest # L'image sera construite et poussée par Jenkins
+        image: ammariamine/middleware:latest
+        imagePullPolicy: IfNotPresent
         ports:
-        - containerPort: 3000 # Port par défaut pour les applications Node.js/Express
+        - containerPort: 3000
         env:
         - name: PORT
           value: "3000"
@@ -35,4 +37,3 @@ spec:
       port: 3000
       targetPort: 3000
   type: ClusterIP
-
