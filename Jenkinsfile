@@ -25,7 +25,7 @@ pipeline {
 
         stage('Code Quality Analysis (SonarQube)') {
             environment {
-                SONAR_SCANNER_HOME = tool 'SonarScanner'
+                SONAR_SCANNER_HOME = tool 'SonarQube'
             }
             steps {
                 withSonarQubeEnv('SonarQube') {
