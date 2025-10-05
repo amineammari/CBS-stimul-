@@ -10,7 +10,7 @@ pipeline {
         KUBECONFIG = '/var/lib/jenkins/.kube/config' // Use admin kubeconfig directly
 
         // OWASP ZAP
-        ZAP_HOST = 'localhost'
+        ZAP_HOST = '192.168.72.128'
         ZAP_PORT = '8090'
     }
 
