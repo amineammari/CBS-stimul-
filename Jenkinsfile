@@ -13,7 +13,7 @@ pipeline {
         // OWASP ZAP
         ZAP_API_KEY = credentials('owasp-zap-api-key')
         ZAP_HOST = 'localhost'
-        ZAP_PORT = '8081'
+        ZAP_PORT = '8090' // Updated port
     }
 
     stages {
@@ -28,7 +28,7 @@ pipeline {
                 SONAR_SCANNER_HOME = tool 'SonarScanner'
             }
             steps {
-                withSonarQubeEnv('SonarQube') {
+                withSonarQubeEnv('SonarQubeLocal') {
                     sh """
                         ${SONAR_SCANNER_HOME}/bin/sonar-scanner \
                           -Dsonar.projectKey=CBS-stimul \
@@ -47,17 +47,11 @@ pipeline {
         stage('Dependency Audit (npm audit)') {
             steps {
                 script {
-                    dir('cbs-simulator') {
-                        sh 'npm install'
-                        sh 'npm audit --json > ../cbs-simulator-npm-audit.json || true'
-                    }
-                    dir('middleware') {
-                        sh 'npm install'
-                        sh 'npm audit --json > ../middleware-npm-audit.json || true'
-                    }
-                    dir('dashboard') {
-                        sh 'npm install'
-                        sh 'npm audit --json > ../dashboard-npm-audit.json || true'
+                    ['cbs-simulator', 'middleware', 'dashboard'].each { dirName ->
+                        dir(dirName) {
+                            sh 'npm install'
+                            sh "npm audit --json > ../${dirName}-npm-audit.json || true"
+                        }
                     }
                 }
             }
@@ -71,23 +65,19 @@ pipeline {
         stage('Docker Build & Push') {
             steps {
                 withDockerRegistry(credentialsId: "${DOCKER_CREDENTIALS_ID}", url: 'https://index.docker.io/v1/') {
-                    sh "docker build -t ${DOCKER_REGISTRY}/cbs-simulator:latest ./cbs-simulator"
-                    sh "docker push ${DOCKER_REGISTRY}/cbs-simulator:latest"
-
-                    sh "docker build -t ${DOCKER_REGISTRY}/middleware:latest ./middleware"
-                    sh "docker push ${DOCKER_REGISTRY}/middleware:latest"
-
-                    sh "docker build -t ${DOCKER_REGISTRY}/dashboard:latest ./dashboard"
-                    sh "docker push ${DOCKER_REGISTRY}/dashboard:latest"
+                    ['cbs-simulator', 'middleware', 'dashboard'].each { dirName ->
+                        sh "docker build -t ${DOCKER_REGISTRY}/${dirName}:latest ./${dirName}"
+                        sh "docker push ${DOCKER_REGISTRY}/${dirName}:latest"
+                    }
                 }
             }
         }
 
         stage('Image Security Scan (Docker Scout)') {
             steps {
-                sh "docker scout cves ${DOCKER_REGISTRY}/cbs-simulator:latest > cbs-simulator-docker-scout-report.txt || true"
-                sh "docker scout cves ${DOCKER_REGISTRY}/middleware:latest > middleware-docker-scout-report.txt || true"
-                sh "docker scout cves ${DOCKER_REGISTRY}/dashboard:latest > dashboard-docker-scout-report.txt || true"
+                ['cbs-simulator', 'middleware', 'dashboard'].each { dirName ->
+                    sh "docker scout cves ${DOCKER_REGISTRY}/${dirName}:latest > ${dirName}-docker-scout-report.txt || true"
+                }
             }
             post {
                 always {
@@ -99,19 +89,19 @@ pipeline {
         stage('Deployment to Test Env') {
             steps {
                 withCredentials([file(credentialsId: "${KUBECONFIG_CREDENTIAL_ID}", variable: 'KUBECONFIG')]) {
-                    sh "kubectl --kubeconfig=${KUBECONFIG} apply -f kubernetes/cbs-simulator-deployment.yaml -n ${K8S_NAMESPACE}"
-                    sh "kubectl --kubeconfig=${KUBECONFIG} apply -f kubernetes/middleware-deployment.yaml -n ${K8S_NAMESPACE}"
-                    sh "kubectl --kubeconfig=${KUBECONFIG} apply -f kubernetes/dashboard-deployment.yaml -n ${K8S_NAMESPACE}"
-                    
-                    sh "kubectl --kubeconfig=${KUBECONFIG} rollout status deployment/cbs-simulator -n ${K8S_NAMESPACE}"
-                    sh "kubectl --kubeconfig=${KUBECONFIG} rollout status deployment/middleware -n ${K8S_NAMESPACE}"
-                    sh "kubectl --kubeconfig=${KUBECONFIG} rollout status deployment/dashboard -n ${K8S_NAMESPACE}"
+                    ['cbs-simulator', 'middleware', 'dashboard'].each { dirName ->
+                        sh "kubectl --kubeconfig=${KUBECONFIG} apply -f kubernetes/${dirName}-deployment.yaml -n ${K8S_NAMESPACE}"
+                        sh "kubectl --kubeconfig=${KUBECONFIG} rollout status deployment/${dirName} -n ${K8S_NAMESPACE}"
+                    }
                 }
             }
         }
 
         stage('Dynamic Security Testing (OWASP ZAP)') {
             steps {
+                // Ensure ZAP daemon is up
+                sh "sleep 10"
+
                 sh "curl 'http://${ZAP_HOST}:${ZAP_PORT}/JSON/spider/action/scan/?apikey=${ZAP_API_KEY}&url=http://your-app-url' || true"
                 sh "sleep 30"
                 sh "curl 'http://${ZAP_HOST}:${ZAP_PORT}/JSON/ascan/action/scan/?apikey=${ZAP_API_KEY}&url=http://your-app-url' || true"
