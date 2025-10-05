@@ -12,7 +12,7 @@ pipeline {
 
         // OWASP ZAP
         ZAP_HOST = 'localhost'
-        ZAP_PORT = '8090' // Updated port
+        ZAP_PORT = '8090'
     }
 
     stages {
@@ -62,7 +62,7 @@ pipeline {
 
         stage('Docker Build & Push') {
             steps {
-                withDockerRegistry(credentialsId: "${docker-hub-creds}", url: 'https://index.docker.io/v1/') {
+                withDockerRegistry(credentialsId: 'docker-hub-creds', url: 'https://index.docker.io/v1/') {
                     script {
                         def apps = ['cbs-simulator', 'middleware', 'dashboard']
                         for (app in apps) {
@@ -92,7 +92,7 @@ pipeline {
 
         stage('Deployment to Test Env') {
             steps {
-                withCredentials([file(credentialsId: "${KUBECONFIG_CREDENTIAL_ID}", variable: 'KUBECONFIG')]) {
+                withCredentials([file(credentialsId: 'kubeconfig-credentials', variable: 'KUBECONFIG')]) {
                     script {
                         def apps = ['cbs-simulator', 'middleware', 'dashboard']
                         for (app in apps) {
