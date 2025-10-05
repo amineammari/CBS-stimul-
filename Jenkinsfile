@@ -32,7 +32,8 @@ pipeline {
                     sh """
                         /usr/local/bin/sonar-scanner \
                           -Dsonar.projectKey=CBS-stimul \
-                          -Dsonar.sources=.
+                          -Dsonar.sources=. \
+                          -Dsonar.login=${SONAR_TOKEN}
                     """
                 }
             }
