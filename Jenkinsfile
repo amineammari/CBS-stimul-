@@ -28,7 +28,7 @@ pipeline {
                 SONAR_SCANNER_HOME = tool 'SonarQube'
             }
             steps {
-                withSonarQubeEnv('SonarQube') {
+                withSonarQubeEnv('SonarQubeLocal') {
                     sh """
                         ${SONAR_SCANNER_HOME}/bin/sonar-scanner \
                           -Dsonar.projectKey=CBS-stimul \
