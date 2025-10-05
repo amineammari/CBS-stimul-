@@ -11,7 +11,6 @@ pipeline {
         K8S_NAMESPACE = 'default'
 
         // OWASP ZAP
-        ZAP_API_KEY = credentials('owasp-zap-api-key')
         ZAP_HOST = 'localhost'
         ZAP_PORT = '8090' // Updated port
     }
@@ -24,17 +23,14 @@ pipeline {
         }
 
         stage('Code Quality Analysis (SonarQube)') {
-            environment {
-                SONAR_SCANNER_HOME = tool 'SonarQube'
-            }
             steps {
-                withSonarQubeEnv('SonarQubeLocal') {
-                    sh """
+                withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+                    sh '''
                         /usr/local/bin/sonar-scanner \
                           -Dsonar.projectKey=CBS-stimul \
                           -Dsonar.sources=. \
-                          -Dsonar.login=${SONAR_TOKEN}
-                    """
+                          -Dsonar.login=$SONAR_TOKEN
+                    '''
                 }
             }
             post {
@@ -48,17 +44,12 @@ pipeline {
         stage('Dependency Audit (npm audit)') {
             steps {
                 script {
-                    dir('cbs-simulator') {
-                        sh 'npm install'
-                        sh 'npm audit --json > ../cbs-simulator-npm-audit.json || true'
-                    }
-                    dir('middleware') {
-                        sh 'npm install'
-                        sh 'npm audit --json > ../middleware-npm-audit.json || true'
-                    }
-                    dir('dashboard') {
-                        sh 'npm install'
-                        sh 'npm audit --json > ../dashboard-npm-audit.json || true'
+                    def apps = ['cbs-simulator', 'middleware', 'dashboard']
+                    for (app in apps) {
+                        dir(app) {
+                            sh 'npm install'
+                            sh "npm audit --json > ../${app}-npm-audit.json || true"
+                        }
                     }
                 }
             }
@@ -73,14 +64,11 @@ pipeline {
             steps {
                 withDockerRegistry(credentialsId: "${DOCKER_CREDENTIALS_ID}", url: 'https://index.docker.io/v1/') {
                     script {
-                        sh "docker build -t ${DOCKER_REGISTRY}/cbs-simulator:latest ./cbs-simulator"
-                        sh "docker push ${DOCKER_REGISTRY}/cbs-simulator:latest"
-
-                        sh "docker build -t ${DOCKER_REGISTRY}/middleware:latest ./middleware"
-                        sh "docker push ${DOCKER_REGISTRY}/middleware:latest"
-
-                        sh "docker build -t ${DOCKER_REGISTRY}/dashboard:latest ./dashboard"
-                        sh "docker push ${DOCKER_REGISTRY}/dashboard:latest"
+                        def apps = ['cbs-simulator', 'middleware', 'dashboard']
+                        for (app in apps) {
+                            sh "docker build -t ${DOCKER_REGISTRY}/${app}:latest ./${app}"
+                            sh "docker push ${DOCKER_REGISTRY}/${app}:latest"
+                        }
                     }
                 }
             }
@@ -89,9 +77,10 @@ pipeline {
         stage('Image Security Scan (Docker Scout)') {
             steps {
                 script {
-                    sh "docker scout cves ${DOCKER_REGISTRY}/cbs-simulator:latest > cbs-simulator-docker-scout-report.txt || true"
-                    sh "docker scout cves ${DOCKER_REGISTRY}/middleware:latest > middleware-docker-scout-report.txt || true"
-                    sh "docker scout cves ${DOCKER_REGISTRY}/dashboard:latest > dashboard-docker-scout-report.txt || true"
+                    def apps = ['cbs-simulator', 'middleware', 'dashboard']
+                    for (app in apps) {
+                        sh "docker scout cves ${DOCKER_REGISTRY}/${app}:latest > ${app}-docker-scout-report.txt || true"
+                    }
                 }
             }
             post {
@@ -105,14 +94,11 @@ pipeline {
             steps {
                 withCredentials([file(credentialsId: "${KUBECONFIG_CREDENTIAL_ID}", variable: 'KUBECONFIG')]) {
                     script {
-                        sh "kubectl --kubeconfig=${KUBECONFIG} apply -f kubernetes/cbs-simulator-deployment.yaml -n ${K8S_NAMESPACE}"
-                        sh "kubectl --kubeconfig=${KUBECONFIG} rollout status deployment/cbs-simulator -n ${K8S_NAMESPACE}"
-
-                        sh "kubectl --kubeconfig=${KUBECONFIG} apply -f kubernetes/middleware-deployment.yaml -n ${K8S_NAMESPACE}"
-                        sh "kubectl --kubeconfig=${KUBECONFIG} rollout status deployment/middleware -n ${K8S_NAMESPACE}"
-
-                        sh "kubectl --kubeconfig=${KUBECONFIG} apply -f kubernetes/dashboard-deployment.yaml -n ${K8S_NAMESPACE}"
-                        sh "kubectl --kubeconfig=${KUBECONFIG} rollout status deployment/dashboard -n ${K8S_NAMESPACE}"
+                        def apps = ['cbs-simulator', 'middleware', 'dashboard']
+                        for (app in apps) {
+                            sh "kubectl --kubeconfig=${KUBECONFIG} apply -f kubernetes/${app}-deployment.yaml -n ${K8S_NAMESPACE}"
+                            sh "kubectl --kubeconfig=${KUBECONFIG} rollout status deployment/${app} -n ${K8S_NAMESPACE}"
+                        }
                     }
                 }
             }
@@ -120,12 +106,16 @@ pipeline {
 
         stage('Dynamic Security Testing (OWASP ZAP)') {
             steps {
-                sh "sleep 10" // Ensure ZAP daemon is up
-                sh "curl 'http://${ZAP_HOST}:${ZAP_PORT}/JSON/spider/action/scan/?apikey=${ZAP_API_KEY}&url=http://your-app-url' || true"
-                sh "sleep 30"
-                sh "curl 'http://${ZAP_HOST}:${ZAP_PORT}/JSON/ascan/action/scan/?apikey=${ZAP_API_KEY}&url=http://your-app-url' || true"
-                sh "sleep 60"
-                sh "curl 'http://${ZAP_HOST}:${ZAP_PORT}/OTHER/core/other/htmlreport/?apikey=${ZAP_API_KEY}' -o owasp-zap-report.html || true"
+                withCredentials([string(credentialsId: 'owasp-zap-api-key', variable: 'ZAP_API_KEY')]) {
+                    sh '''
+                        sleep 10
+                        curl "http://${ZAP_HOST}:${ZAP_PORT}/JSON/spider/action/scan/?apikey=${ZAP_API_KEY}&url=http://your-app-url" || true
+                        sleep 30
+                        curl "http://${ZAP_HOST}:${ZAP_PORT}/JSON/ascan/action/scan/?apikey=${ZAP_API_KEY}&url=http://your-app-url" || true
+                        sleep 60
+                        curl "http://${ZAP_HOST}:${ZAP_PORT}/OTHER/core/other/htmlreport/?apikey=${ZAP_API_KEY}" -o owasp-zap-report.html || true
+                    '''
+                }
             }
             post {
                 always {
