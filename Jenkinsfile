@@ -30,7 +30,7 @@ pipeline {
             steps {
                 withSonarQubeEnv('SonarQubeLocal') {
                     sh """
-                        ${SONAR_SCANNER_HOME}/bin/sonar-scanner \
+                        /usr/local/bin/sonar-scanner \
                           -Dsonar.projectKey=CBS-stimul \
                           -Dsonar.sources=.
                     """
