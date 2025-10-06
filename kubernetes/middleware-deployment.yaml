@@ -37,4 +37,4 @@ spec:
       port: 3000
       targetPort: 3000
       nodePort: 30002   # external port
-  type: NodePort
+ 
