@@ -36,4 +36,5 @@ spec:
     - protocol: TCP
       port: 3000
       targetPort: 3000
-  type: LoadBalancer
+      nodePort: 30001   # external port
+  type: NodePort
