@@ -7,7 +7,7 @@ pipeline {
 
         // Kubernetes
         K8S_NAMESPACE = 'default'
-        KUBECONFIG = '/var/lib/jenkins/.kube/config' // Use admin kubeconfig directly
+        KUBECONFIG = '/var/lib/jenkins/.kube/config'
 
         // OWASP ZAP
         ZAP_HOST = '192.168.72.128'
@@ -62,12 +62,12 @@ pipeline {
             }
         }
 
-        stage('Image Security Scan (Docker Scout)') {
+        stage('Image Security Scan (Trivy)') {
             steps {
                 script {
                     def apps = ['cbs-simulator', 'middleware', 'dashboard']
                     apps.each { app ->
-                        sh "docker scout cves ${DOCKER_REGISTRY}/${app}:latest > ${app}-docker-scout-report.txt || true"
+                        sh "trivy image --exit-code 0 --severity HIGH,CRITICAL ${DOCKER_REGISTRY}/${app}:latest > ${app}-trivy-report.txt || true"
                     }
                 }
             }
@@ -104,7 +104,7 @@ pipeline {
     post {
         always {
             echo 'Pipeline finished.'
-            archiveArtifacts artifacts: '*-npm-audit.json, *-docker-scout-report.txt, owasp-zap-report.html, sonarqube-report.txt', fingerprint: true
+            archiveArtifacts artifacts: '*-npm-audit.json, *-trivy-report.txt, owasp-zap-report.html, sonarqube-report.txt', fingerprint: true
         }
         failure {
             echo 'Pipeline failed.'
