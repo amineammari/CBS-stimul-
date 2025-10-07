@@ -68,14 +68,14 @@ Le pipeline Jenkins est configuré pour :
 ## 🌐 Accès aux Services
 
 ### Dashboard (Frontend)
-- **URL**: `http://192.168.72.128:30001`
-- **URL**: `http://192.168.72.129:30001`
-- **URL**: `http://192.168.72.130:30001`
+- **URL**: `http://192.168.72.128:30004`
+- **URL**: `http://192.168.72.129:30004`
+- **URL**: `http://192.168.72.130:30004`
 
 ### Middleware API
-- **URL**: `http://192.168.72.128:30002`
-- **URL**: `http://192.168.72.129:30002`
-- **URL**: `http://192.168.72.130:30002`
+- **URL**: `http://192.168.72.128:30003`
+- **URL**: `http://192.168.72.129:30003`
+- **URL**: `http://192.168.72.130:30003`
 
 ### CBS-Simulator (Interne)
 - Accessible uniquement depuis le cluster via `cbs-simulator-service:4000`

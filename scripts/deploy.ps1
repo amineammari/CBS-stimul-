@@ -97,14 +97,14 @@ kubectl get deployments -n $Namespace
 Write-Host "`n🌐 Access URLs:" -ForegroundColor $Green
 Write-Host "=================="
 Write-Host "Dashboard (Frontend):" -ForegroundColor $Green
-Write-Host "  http://192.168.72.128:30001"
-Write-Host "  http://192.168.72.129:30001"
-Write-Host "  http://192.168.72.130:30001"
+Write-Host "  http://192.168.72.128:30004"
+Write-Host "  http://192.168.72.129:30004"
+Write-Host "  http://192.168.72.130:30004"
 
 Write-Host "`nMiddleware API:" -ForegroundColor $Green
-Write-Host "  http://192.168.72.128:30002"
-Write-Host "  http://192.168.72.129:30002"
-Write-Host "  http://192.168.72.130:30002"
+Write-Host "  http://192.168.72.128:30003"
+Write-Host "  http://192.168.72.129:30003"
+Write-Host "  http://192.168.72.130:30003"
 
 Write-Host "`n📋 Useful Commands:" -ForegroundColor $Green
 Write-Host "====================="

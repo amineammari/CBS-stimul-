@@ -136,7 +136,7 @@ spec:
     - protocol: TCP
       port: 3000
       targetPort: 3000
-      nodePort: 30002
+      nodePort: 30003
 
 ---
 # Dashboard Service
@@ -167,7 +167,7 @@ spec:
         - name: PORT
           value: "3000"
         - name: REACT_APP_API_URL
-          value: "http://192.168.72.128:30002"
+          value: "http://192.168.72.128:30003"
         resources:
           requests:
             memory: "128Mi"
@@ -202,4 +202,4 @@ spec:
     - protocol: TCP
       port: 3000
       targetPort: 80
-      nodePort: 30001
+      nodePort: 30004
