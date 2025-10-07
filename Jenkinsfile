@@ -84,6 +84,12 @@ pipeline {
                     // Create namespace if it doesn't exist
                     sh "kubectl create namespace ${K8S_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -"
                     
+                    // Delete existing deployments to force redeployment with new images
+                    sh "kubectl delete deployment cbs-simulator middleware dashboard -n ${K8S_NAMESPACE} --ignore-not-found=true"
+                    
+                    // Wait for cleanup
+                    sh "sleep 10"
+                    
                     // Deploy all services using the complete deployment file
                     sh "kubectl apply -f kubernetes/deploy-all.yaml"
                     
@@ -96,6 +102,11 @@ pipeline {
                     // Display service information
                     sh "kubectl get services -n ${K8S_NAMESPACE}"
                     sh "kubectl get pods -n ${K8S_NAMESPACE}"
+                    
+                    // Verify that new images are being used
+                    sh "kubectl describe deployment cbs-simulator -n ${K8S_NAMESPACE} | grep Image"
+                    sh "kubectl describe deployment middleware -n ${K8S_NAMESPACE} | grep Image"
+                    sh "kubectl describe deployment dashboard -n ${K8S_NAMESPACE} | grep Image"
                 }
             }
         }
