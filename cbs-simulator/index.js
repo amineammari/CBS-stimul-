@@ -133,6 +133,23 @@ const history = {
 };
 
 // --- Routes ---
+// Health check endpoint
+app.get('/', (req, res) => {
+  res.status(200).json({ 
+    status: 'OK', 
+    service: 'CBS Simulator', 
+    timestamp: new Date().toISOString() 
+  });
+});
+
+app.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'OK', 
+    service: 'CBS Simulator', 
+    timestamp: new Date().toISOString() 
+  });
+});
+
 app.get('/cbs/account/:id', (req, res) => {
   const account = accounts[req.params.id];
   if (account) {

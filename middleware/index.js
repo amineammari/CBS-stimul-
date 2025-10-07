@@ -14,7 +14,7 @@ app.use(cors()); // Activer CORS pour toutes les routes
 
 // --- Axios Client for CBS ---
 const cbsClient = axios.create({
-    baseURL: 'http://localhost:4000', // Le simulateur tourne sur le port 4000
+    baseURL: process.env.CBS_SIMULATOR_URL || 'http://localhost:4000', // Le simulateur tourne sur le port 4000
 });
 
 // Interceptor to measure response time for logging
