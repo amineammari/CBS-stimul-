@@ -24,6 +24,8 @@ spec:
         env:
         - name: PORT
           value: "3000"
+        - name: REACT_APP_API_URL
+          value: "http://192.168.72.130:30002"
 ---
 apiVersion: v1
 kind: Service
@@ -36,5 +38,5 @@ spec:
   ports:
     - protocol: TCP
       port: 3000
-      targetPort: 80
+      targetPort: 3000
       nodePort: 30001
