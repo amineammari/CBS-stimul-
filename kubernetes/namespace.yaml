@@ -1,0 +1,7 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cbs-system
+  labels:
+    name: cbs-system

@@ -1,3 +1,4 @@
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -5,7 +6,7 @@ metadata:
   labels:
     app: middleware
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: middleware
@@ -17,23 +18,44 @@ spec:
       containers:
       - name: middleware
         image: ammariamine/middleware:latest
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         ports:
         - containerPort: 3000
         env:
         - name: PORT
           value: "3000"
+        - name: CBS_SIMULATOR_URL
+          value: "http://cbs-simulator-service:4000"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "150m"
+          limits:
+            memory: "512Mi"
+            cpu: "300m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 5
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: middleware-service
 spec:
-  type: NodePort            # <--- Added
+  type: NodePort
   selector:
     app: middleware
   ports:
     - protocol: TCP
       port: 3000
       targetPort: 3000
-      nodePort: 30002       # external port
+      nodePort: 30002
