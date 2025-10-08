@@ -59,7 +59,7 @@ pipeline {
                     script {
                         def apps = ['cbs-simulator', 'middleware', 'dashboard']
                         apps.each { app ->
-                            sh "docker build -t ${DOCKER_REGISTRY}/${app}:latest ./${app}"
+                            sh "docker build --no-cache -t ${DOCKER_REGISTRY}/${app}:latest ./${app}"
                             sh "docker push ${DOCKER_REGISTRY}/${app}:latest"
                         }
                     }
