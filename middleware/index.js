@@ -491,7 +491,7 @@ app.get('/api/accounts/:accountNumber', async (req, res) => {
     try {
         const { accountNumber } = req.params;
         console.log(`Fetching account ${accountNumber} from CBS Simulator`);
-        const response = await axios.get(`${process.env.CBS_SIMULATOR_URL || 'http://cbs-simulator-service:30003'}/api/accounts/${accountNumber}`, { timeout: 5000 });
+    const response = await axios.get(`${process.env.CBS_SIMULATOR_URL || 'http://cbs-simulator-service:30005'}/api/accounts/${accountNumber}`, { timeout: 5000 });
         res.status(200).json(response.data);
     } catch (error) {
         console.error('Error fetching account:', error.message);
@@ -507,7 +507,7 @@ app.post('/api/transactions', async (req, res) => {
     try {
         const transaction = req.body;
         console.log('Processing transaction:', transaction);
-        const response = await axios.post(`${process.env.CBS_SIMULATOR_URL || 'http://cbs-simulator-service:30003'}/api/transactions`, transaction, { timeout: 5000 });
+    const response = await axios.post(`${process.env.CBS_SIMULATOR_URL || 'http://cbs-simulator-service:30005'}/api/transactions`, transaction, { timeout: 5000 });
         res.status(201).json(response.data);
     } catch (error) {
         console.error('Error processing transaction:', error.message);
@@ -523,7 +523,7 @@ app.get('/api/balance/:accountNumber', async (req, res) => {
     try {
         const { accountNumber } = req.params;
         console.log(`Fetching balance for account ${accountNumber}`);
-        const response = await axios.get(`${process.env.CBS_SIMULATOR_URL || 'http://cbs-simulator-service:30003'}/api/balance/${accountNumber}`, { timeout: 5000 });
+    const response = await axios.get(`${process.env.CBS_SIMULATOR_URL || 'http://cbs-simulator-service:30005'}/api/balance/${accountNumber}`, { timeout: 5000 });
         res.status(200).json(response.data);
     } catch (error) {
         console.error('Error fetching balance:', error.message);
@@ -630,7 +630,7 @@ app.listen(PORT, HOST, () => {
     console.log(`Port: ${PORT}`);
     console.log(`Host: ${HOST}`);
     console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`CBS Simulator URL: ${process.env.CBS_SIMULATOR_URL || 'http://cbs-simulator-service:30003'}`);
+    console.log(`CBS Simulator URL: ${process.env.CBS_SIMULATOR_URL || 'http://cbs-simulator-service:30005'}`);
     console.log(`Time: ${new Date().toISOString()}`);
     console.log(`========================================`);
 });

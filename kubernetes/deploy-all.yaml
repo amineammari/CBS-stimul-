@@ -35,12 +35,12 @@ spec:
         image: ammariamine/cbs-simulator:latest
         imagePullPolicy: Always
         ports:
-        - containerPort: 30003
+  - containerPort: 30005
           name: http
           protocol: TCP
         env:
         - name: PORT
-          value: "30003"
+          value: "30005"
         - name: NODE_ENV
           value: "production"
         resources:
@@ -53,7 +53,7 @@ spec:
         readinessProbe:
           httpGet:
             path: /
-            port: 30003
+            port: 30005
             scheme: HTTP
           initialDelaySeconds: 15
           periodSeconds: 10
@@ -63,7 +63,7 @@ spec:
         livenessProbe:
           httpGet:
             path: /
-            port: 30003
+            port: 30005
             scheme: HTTP
           initialDelaySeconds: 30
           periodSeconds: 15
@@ -86,8 +86,8 @@ spec:
     app: cbs-simulator
   ports:
     - protocol: TCP
-      port: 30003
-      targetPort: 30003
+  port: 30005
+  targetPort: 30005
       name: http
   sessionAffinity: None
 
@@ -106,9 +106,9 @@ spec:
     app: cbs-simulator
   ports:
     - protocol: TCP
-      port: 30003
-      targetPort: 30003
-      nodePort: 30001
+  port: 30005
+  targetPort: 30005
+  nodePort: 30005
       name: http
   sessionAffinity: None
 
@@ -147,7 +147,7 @@ spec:
         - name: NODE_ENV
           value: "production"
         - name: CBS_SIMULATOR_URL
-          value: "http://cbs-simulator-service:30003"
+          value: "http://cbs-simulator-service:30005"
         resources:
           requests:
             memory: "256Mi"
@@ -193,7 +193,7 @@ spec:
     - protocol: TCP
       port: 3000
       targetPort: 3000
-      nodePort: 30003
+  nodePort: 30003
       name: http
   sessionAffinity: None
 
@@ -228,7 +228,7 @@ spec:
           protocol: TCP
         env:
         - name: REACT_APP_API_URL
-          value: "http://192.168.72.128:30003"
+          value: "http://192.168.72.128:30005"
         - name: REACT_APP_MIDDLEWARE_URL
           value: "http://middleware-service:3000"
         resources:

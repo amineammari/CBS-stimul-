@@ -104,8 +104,8 @@ Write-Host "  http://192.168.72.129:30004"
 Write-Host "  http://192.168.72.130:30004"
 
 Write-Host "`nMiddleware API:" -ForegroundColor $Green
-Write-Host "  http://192.168.72.128:30003"
-Write-Host "  http://192.168.72.129:30003"
-Write-Host "  http://192.168.72.130:30003"
+Write-Host "  http://192.168.72.128:30005"
+Write-Host "  http://192.168.72.129:30005"
+Write-Host "  http://192.168.72.130:30005"
 
 Print-Status "CBS rebuild and deployment completed successfully! 🎉"
