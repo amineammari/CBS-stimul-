@@ -35,9 +35,9 @@ spec:
         image: ammariamine/cbs-simulator:latest
         imagePullPolicy: Always
         ports:
-  - containerPort: 30005
-          name: http
-          protocol: TCP
+          - containerPort: 30005
+            name: http
+            protocol: TCP
         env:
         - name: PORT
           value: "30005"
