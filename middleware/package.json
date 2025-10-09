@@ -1,15 +1,25 @@
 {
   "name": "middleware",
   "version": "1.0.0",
-  "description": "Middleware API to connect to the CBS.",
+  "description": "CBS Middleware Service",
   "main": "index.js",
   "scripts": {
-    "start": "node -r ./tracing.js index.js"
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "cbs",
+    "middleware",
+    "api"
+  ],
+  "author": "Your Name",
   "license": "ISC",
   "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "axios": "^1.4.0",
+    "dotenv": "^16.0.3",
     "@opentelemetry/api": "^1.7.0",
     "@opentelemetry/auto-instrumentations-node": "^0.41.1",
     "@opentelemetry/exporter-metrics-otlp-http": "^0.48.0",
@@ -18,14 +28,15 @@
     "@opentelemetry/sdk-metrics": "^1.21.0",
     "@opentelemetry/sdk-node": "^0.48.0",
     "@opentelemetry/semantic-conventions": "^1.21.0",
-    "axios": "^1.4.0",
-    "cors": "^2.8.5",
-    "express": "^4.18.2",
     "morgan": "^1.10.0",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^4.6.3"
   },
   "devDependencies": {
-    "nodemon": "^3.1.10"
+    "nodemon": "^2.0.22"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
   }
 }

@@ -1,31 +1,36 @@
-# Use an official Node.js runtime as a parent image
 FROM node:18-slim
 
-ENV NODE_ENV=production
-
-# Set the working directory in the container
+# Set working directory
 WORKDIR /usr/src/app
 
-# Copy package.json and package-lock.json to the working directory
+# Copy package files
 COPY package*.json ./
 
-# Install any needed packages
-# Use npm ci for clean, reproducible builds and install only production dependencies
-RUN npm ci --only=production && npm cache clean --force
+# Install dependencies
+RUN npm ci --only=production && \
+    npm cache clean --force
 
-# Bundle app source
+# Copy application code
 COPY . .
 
-# Create a non-root user for security and change ownership
-RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
-RUN chown -R appuser:appgroup /usr/src/app
+# Create non-root user for security
+RUN addgroup --system appgroup && \
+    adduser --system --ingroup appgroup appuser && \
+    chown -R appuser:appgroup /usr/src/app
 
-# Switch to the non-root user
+# Switch to non-root user
 USER appuser
 
-# Make port 8080 available to the world outside this container
-EXPOSE 8080
+# Expose the application port
+EXPOSE 30003
 
-# Define the command to run your app
-# Run the app directly with node for fewer processes
-CMD ["node", "index.js"] 
+# Set environment variables
+ENV PORT=30003
+ENV NODE_ENV=production
+
+# Add health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+    CMD node -e "require('http').get('http://localhost:30003/', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+
+# Start the application
+CMD ["node", "index.js"]

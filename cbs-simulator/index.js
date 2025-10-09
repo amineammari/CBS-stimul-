@@ -1,6 +1,9 @@
 const express = require('express');
 const app = express();
-const port = 30003;
+
+// Use PORT from environment variable or default to 30003
+const port = process.env.PORT || 30003;
+const host = '0.0.0.0'; // CRITICAL: Listen on all interfaces for Docker
 
 app.use(express.json());
 
@@ -51,7 +54,7 @@ const accounts = {
     iban: 'TN59 1000 6035 0000 0123 4567 89',
     balance: 15850.75, 
     currency: 'TND',
-    createdAt: new Date(now.setDate(now.getDate() - 365)).toISOString(),
+    createdAt: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString(),
     updatedAt: new Date().toISOString(),
   },
   'A002': { 
@@ -61,7 +64,7 @@ const accounts = {
     iban: 'TN59 1000 6035 0000 0789 0123 45',
     balance: 125000.00, 
     currency: 'TND',
-    createdAt: new Date(now.setDate(now.getDate() - 730)).toISOString(),
+    createdAt: new Date(Date.now() - 730 * 24 * 60 * 60 * 1000).toISOString(),
     updatedAt: new Date().toISOString(),
   },
   'A003': { 
@@ -71,7 +74,7 @@ const accounts = {
     iban: 'TN59 1400 3051 0000 0987 6543 21',
     balance: 7230.50, 
     currency: 'TND',
-    createdAt: new Date(now.setDate(now.getDate() - 180)).toISOString(),
+    createdAt: new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString(),
     updatedAt: new Date().toISOString(),
   },
   'A004': {
@@ -81,7 +84,7 @@ const accounts = {
     iban: 'TN59 1200 8091 0000 0543 2167 89',
     balance: 21500.00,
     currency: 'TND',
-    createdAt: new Date(now.setDate(now.getDate() - 90)).toISOString(),
+    createdAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(),
     updatedAt: new Date().toISOString(),
   },
   'A005': {
@@ -91,93 +94,109 @@ const accounts = {
     iban: 'TN59 1100 7061 0000 0876 5432 10',
     balance: 9800.25,
     currency: 'TND',
-    createdAt: new Date(now.setDate(now.getDate() - 45)).toISOString(),
+    createdAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString(),
     updatedAt: new Date().toISOString(),
   },
-    'A006': {
+  'A006': {
     id: 'A006',
     customerId: 'C004',
     type: 'Compte Épargne',
     iban: 'TN59 1100 7061 0000 0112 2334 45',
     balance: 50000.00,
     currency: 'TND',
-    createdAt: new Date(now.setDate(now.getDate() - 45)).toISOString(),
+    createdAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString(),
     updatedAt: new Date().toISOString(),
   }
 };
 
 const history = {
   'A001': [
-    { id: 'TRN001', type: 'DÉBIT', date: new Date(now.setDate(now.getDate() - 5)).toISOString(), description: 'Paiement Facture STEG', montant: -120.50 },
-    { id: 'TRN002', type: 'DÉBIT', date: new Date(now.setDate(now.getDate() - 3)).toISOString(), description: 'Achat en ligne Jumia', montant: -345.00 },
-    { id: 'TRN003', type: 'CRÉDIT', date: new Date(now.setDate(now.getDate() - 1)).toISOString(), description: 'Virement Salaire', montant: 4500.00 },
+    { id: 'TRN001', type: 'DÉBIT', date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), description: 'Paiement Facture STEG', montant: -120.50 },
+    { id: 'TRN002', type: 'DÉBIT', date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), description: 'Achat en ligne Jumia', montant: -345.00 },
+    { id: 'TRN003', type: 'CRÉDIT', date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), description: 'Virement Salaire', montant: 4500.00 },
   ],
   'A002': [
-    { id: 'TRN004', type: 'CRÉDIT', date: new Date(now.setDate(now.getDate() - 30)).toISOString(), description: 'Dépôt initial', montant: 100000.00 },
-    { id: 'TRN005', type: 'CRÉDIT', date: new Date(now.setDate(now.getDate() - 15)).toISOString(), description: 'Intérêts annuels', montant: 2500.00 },
+    { id: 'TRN004', type: 'CRÉDIT', date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), description: 'Dépôt initial', montant: 100000.00 },
+    { id: 'TRN005', type: 'CRÉDIT', date: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(), description: 'Intérêts annuels', montant: 2500.00 },
   ],
   'A003': [
-    { id: 'TRN006', type: 'CRÉDIT', date: new Date(now.setDate(now.getDate() - 10)).toISOString(), description: 'Virement de "Ahmed"', montant: 800.00 },
-    { id: 'TRN007', type: 'DÉBIT', date: new Date(now.setDate(now.getDate() - 2)).toISOString(), description: 'Retrait GAB', montant: -200.00 },
+    { id: 'TRN006', type: 'CRÉDIT', date: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), description: 'Virement de "Ahmed"', montant: 800.00 },
+    { id: 'TRN007', type: 'DÉBIT', date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), description: 'Retrait GAB', montant: -200.00 },
   ],
   'A004': [
-    { id: 'TRN008', type: 'CRÉDIT', date: new Date(now.setDate(now.getDate() - 20)).toISOString(), description: 'Virement international', montant: 15000.00 },
-    { id: 'TRN009', type: 'DÉBIT', date: new Date(now.setDate(now.getDate() - 5)).toISOString(), description: 'Paiement restaurant', montant: -150.00 },
+    { id: 'TRN008', type: 'CRÉDIT', date: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(), description: 'Virement international', montant: 15000.00 },
+    { id: 'TRN009', type: 'DÉBIT', date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), description: 'Paiement restaurant', montant: -150.00 },
   ],
   'A005': [
-    { id: 'TRN010', type: 'CRÉDIT', date: new Date(now.setDate(now.getDate() - 12)).toISOString(), description: 'Dépôt chèque', montant: 2000.00 },
+    { id: 'TRN010', type: 'CRÉDIT', date: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000).toISOString(), description: 'Dépôt chèque', montant: 2000.00 },
   ],
   'A006': [
-    { id: 'TRN011', type: 'CRÉDIT', date: new Date(now.setDate(now.getDate() - 40)).toISOString(), description: 'Dépôt initial', montant: 50000.00 },
+    { id: 'TRN011', type: 'CRÉDIT', date: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString(), description: 'Dépôt initial', montant: 50000.00 },
   ]
 };
 
 // --- Routes ---
-// Health check endpoint
+// Health check endpoint (REQUIRED for Kubernetes readiness/liveness probes)
 app.get('/', (req, res) => {
   res.status(200).json({ 
     status: 'OK', 
-    service: 'CBS Simulator', 
-    timestamp: new Date().toISOString() 
+    service: 'CBS Simulator',
+    version: '1.0.0',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    port: port,
+    environment: process.env.NODE_ENV || 'development'
   });
 });
 
 app.get('/health', (req, res) => {
   res.status(200).json({ 
-    status: 'OK', 
-    service: 'CBS Simulator', 
-    timestamp: new Date().toISOString() 
+    status: 'healthy', 
+    service: 'CBS Simulator',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
   });
 });
 
+// Get account by ID
 app.get('/cbs/account/:id', (req, res) => {
   const account = accounts[req.params.id];
   if (account) {
     res.json(account);
   } else {
-    res.status(404).send('Account not found');
+    res.status(404).json({ error: 'Account not found', accountId: req.params.id });
   }
 });
 
+// Transfer between accounts
 app.post('/cbs/transfer', (req, res) => {
   const { from, to, amount, description } = req.body;
+  
+  // Validation
   if (!from || !to || !amount) {
-    return res.status(400).send('Missing transfer details');
+    return res.status(400).json({ error: 'Missing transfer details', required: ['from', 'to', 'amount'] });
   }
 
   const fromAccount = accounts[from];
   const toAccount = accounts[to];
 
   if (!fromAccount || !toAccount) {
-    return res.status(404).send('One or more accounts not found');
+    return res.status(404).json({ error: 'One or more accounts not found', from, to });
   }
 
   if (fromAccount.balance < amount) {
-    return res.status(400).send('Insufficient funds');
+    return res.status(400).json({ 
+      error: 'Insufficient funds',
+      available: fromAccount.balance,
+      requested: amount
+    });
   }
 
+  // Process transfer
   fromAccount.balance -= amount;
   toAccount.balance += amount;
+  fromAccount.updatedAt = new Date().toISOString();
+  toAccount.updatedAt = new Date().toISOString();
 
   const debitTransaction = {
     id: `TRN${String(transactionCounter++).padStart(3, '0')}`,
@@ -188,11 +207,11 @@ app.post('/cbs/transfer', (req, res) => {
   };
 
   const creditTransaction = {
-      id: `TRN${String(transactionCounter++).padStart(3, '0')}`,
-      type: 'CRÉDIT',
-      date: new Date().toISOString(),
-      description: description || `Virement de ${from}`,
-      montant: amount,
+    id: `TRN${String(transactionCounter++).padStart(3, '0')}`,
+    type: 'CRÉDIT',
+    date: new Date().toISOString(),
+    description: description || `Virement de ${from}`,
+    montant: amount,
   };
 
   if (!history[from]) history[from] = [];
@@ -209,6 +228,7 @@ app.post('/cbs/transfer', (req, res) => {
   });
 });
 
+// Get customer by ID with their accounts
 app.get('/cbs/customer/:id', (req, res) => {
   const customerId = req.params.id;
   const customer = customers[customerId];
@@ -219,10 +239,11 @@ app.get('/cbs/customer/:id', (req, res) => {
     );
     res.json({ ...customer, accounts: customerAccounts });
   } else {
-    res.status(404).send('Customer not found');
+    res.status(404).json({ error: 'Customer not found', customerId });
   }
 });
 
+// Get account transaction history
 app.get('/cbs/account/:id/history', (req, res) => {
   const accountId = req.params.id;
   const accountHistory = history[accountId];
@@ -230,15 +251,16 @@ app.get('/cbs/account/:id/history', (req, res) => {
   if (accountHistory) {
     res.json(accountHistory);
   } else {
-    // Si le compte existe mais n'a pas d'historique, retourner un tableau vide.
+    // Si le compte existe mais n'a pas d'historique, retourner un tableau vide
     if (accounts[accountId]) {
       res.json([]);
     } else {
-      res.status(404).send('Account not found');
+      res.status(404).json({ error: 'Account not found', accountId });
     }
   }
 });
 
+// Get account with full history
 app.get('/cbs/history/:id', (req, res) => {
   const accountId = req.params.id;
   const account = accounts[accountId];
@@ -250,10 +272,68 @@ app.get('/cbs/history/:id', (req, res) => {
       transactions: accountHistory || []
     });
   } else {
-    res.status(404).send('Account not found');
+    res.status(404).json({ error: 'Account not found', accountId });
   }
 });
 
-app.listen(port, () => {
-  console.log(`CBS Simulator listening at http://192.168.72.128:${port}`);
-}); 
+// Get all customers (useful for testing)
+app.get('/cbs/customers', (req, res) => {
+  res.json(Object.values(customers));
+});
+
+// Get all accounts (useful for testing)
+app.get('/cbs/accounts', (req, res) => {
+  res.json(Object.values(accounts));
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Error:', err);
+  res.status(500).json({
+    error: 'Internal server error',
+    message: err.message
+  });
+});
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({
+    error: 'Not found',
+    path: req.path,
+    message: 'The requested endpoint does not exist'
+  });
+});
+
+// Start server
+app.listen(port, host, () => {
+  console.log('========================================');
+  console.log('CBS Simulator Service Started');
+  console.log('========================================');
+  console.log(`Host: ${host}`);
+  console.log(`Port: ${port}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`Time: ${new Date().toISOString()}`);
+  console.log('========================================');
+  console.log('Available endpoints:');
+  console.log('  GET  /                     - Health check');
+  console.log('  GET  /health               - Health status');
+  console.log('  GET  /cbs/customers        - List all customers');
+  console.log('  GET  /cbs/accounts         - List all accounts');
+  console.log('  GET  /cbs/customer/:id     - Get customer details');
+  console.log('  GET  /cbs/account/:id      - Get account details');
+  console.log('  GET  /cbs/account/:id/history - Get account history');
+  console.log('  GET  /cbs/history/:id      - Get account with history');
+  console.log('  POST /cbs/transfer         - Transfer between accounts');
+  console.log('========================================');
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down gracefully...');
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  console.log('SIGINT received, shutting down gracefully...');
+  process.exit(0);
+});

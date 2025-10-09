@@ -466,7 +466,181 @@ app.post('/transfer', async (req, res) => {
 });
 
 
-app.listen(port, () => {
-    console.log(`Middleware listening at http://localhost:${port}`);
-    console.log(`Swagger docs available at http://localhost:${port}/api-docs`);
-}); 
+
+// =====================
+// Additional Middleware Endpoints (Integrated)
+// =====================
+
+// Root endpoint (API info)
+app.get('/', (req, res) => {
+    res.status(200).json({
+        message: 'CBS Middleware API',
+        version: '1.0.0',
+        status: 'running',
+        endpoints: {
+            health: '/health',
+            accounts: '/api/accounts/:accountNumber',
+            transactions: '/api/transactions',
+            balance: '/api/balance/:accountNumber'
+        }
+    });
+});
+
+// Proxy to CBS Simulator - Account lookup (by accountNumber)
+app.get('/api/accounts/:accountNumber', async (req, res) => {
+    try {
+        const { accountNumber } = req.params;
+        console.log(`Fetching account ${accountNumber} from CBS Simulator`);
+        const response = await axios.get(`${process.env.CBS_SIMULATOR_URL || 'http://cbs-simulator-service:30003'}/api/accounts/${accountNumber}`, { timeout: 5000 });
+        res.status(200).json(response.data);
+    } catch (error) {
+        console.error('Error fetching account:', error.message);
+        res.status(error.response?.status || 500).json({
+            error: 'Failed to fetch account',
+            message: error.message
+        });
+    }
+});
+
+// Proxy to CBS Simulator - Transaction processing
+app.post('/api/transactions', async (req, res) => {
+    try {
+        const transaction = req.body;
+        console.log('Processing transaction:', transaction);
+        const response = await axios.post(`${process.env.CBS_SIMULATOR_URL || 'http://cbs-simulator-service:30003'}/api/transactions`, transaction, { timeout: 5000 });
+        res.status(201).json(response.data);
+    } catch (error) {
+        console.error('Error processing transaction:', error.message);
+        res.status(error.response?.status || 500).json({
+            error: 'Failed to process transaction',
+            message: error.message
+        });
+    }
+});
+
+// Proxy to CBS Simulator - Balance inquiry
+app.get('/api/balance/:accountNumber', async (req, res) => {
+    try {
+        const { accountNumber } = req.params;
+        console.log(`Fetching balance for account ${accountNumber}`);
+        const response = await axios.get(`${process.env.CBS_SIMULATOR_URL || 'http://cbs-simulator-service:30003'}/api/balance/${accountNumber}`, { timeout: 5000 });
+        res.status(200).json(response.data);
+    } catch (error) {
+        console.error('Error fetching balance:', error.message);
+        res.status(error.response?.status || 500).json({
+            error: 'Failed to fetch balance',
+            message: error.message
+        });
+    }
+});
+
+// Middleware-specific business logic endpoints
+
+// Validate transaction before sending to CBS
+app.post('/api/validate-transaction', async (req, res) => {
+    try {
+        const transaction = req.body;
+        if (!transaction.amount || transaction.amount <= 0) {
+            return res.status(400).json({
+                error: 'Invalid transaction',
+                message: 'Amount must be greater than 0'
+            });
+        }
+        if (!transaction.accountNumber) {
+            return res.status(400).json({
+                error: 'Invalid transaction',
+                message: 'Account number is required'
+            });
+        }
+        res.status(200).json({
+            valid: true,
+            message: 'Transaction is valid',
+            transaction: transaction
+        });
+    } catch (error) {
+        console.error('Validation error:', error.message);
+        res.status(500).json({
+            error: 'Validation failed',
+            message: error.message
+        });
+    }
+});
+
+// Example: Get transaction history (mocked)
+app.get('/api/transactions/:accountNumber', async (req, res) => {
+    try {
+        const { accountNumber } = req.params;
+        const transactions = [
+            {
+                id: 'TXN-001',
+                accountNumber: accountNumber,
+                type: 'credit',
+                amount: 500.00,
+                timestamp: new Date().toISOString(),
+                description: 'Deposit'
+            },
+            {
+                id: 'TXN-002',
+                accountNumber: accountNumber,
+                type: 'debit',
+                amount: 200.00,
+                timestamp: new Date().toISOString(),
+                description: 'Withdrawal'
+            }
+        ];
+        res.status(200).json({
+            accountNumber: accountNumber,
+            transactions: transactions,
+            count: transactions.length
+        });
+    } catch (error) {
+        console.error('Error fetching transactions:', error.message);
+        res.status(500).json({
+            error: 'Failed to fetch transactions',
+            message: error.message
+        });
+    }
+});
+
+// Error handling middleware (after all routes)
+app.use((err, req, res, next) => {
+    console.error('Error:', err);
+    res.status(500).json({
+        error: 'Internal server error',
+        message: err.message
+    });
+});
+
+// 404 handler
+app.use((req, res) => {
+    res.status(404).json({
+        error: 'Not found',
+        path: req.path,
+        message: 'The requested endpoint does not exist'
+    });
+});
+
+// Start server (preserve existing port logic)
+const PORT = process.env.PORT || port || 3000;
+const HOST = '0.0.0.0';
+app.listen(PORT, HOST, () => {
+    console.log(`========================================`);
+    console.log(`CBS Middleware Service Started`);
+    console.log(`========================================`);
+    console.log(`Port: ${PORT}`);
+    console.log(`Host: ${HOST}`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`CBS Simulator URL: ${process.env.CBS_SIMULATOR_URL || 'http://cbs-simulator-service:30003'}`);
+    console.log(`Time: ${new Date().toISOString()}`);
+    console.log(`========================================`);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+    console.log('SIGTERM received, shutting down gracefully...');
+    process.exit(0);
+});
+process.on('SIGINT', () => {
+    console.log('SIGINT received, shutting down gracefully...');
+    process.exit(0);
+});
