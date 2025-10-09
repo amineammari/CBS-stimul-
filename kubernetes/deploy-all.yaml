@@ -31,36 +31,36 @@ spec:
         tier: backend
     spec:
       containers:
-      - name: cbs-simulator
-        image: ammariamine/cbs-simulator:latest
-        imagePullPolicy: Always
-        ports:
-          - containerPort: 30005
-            name: http
-            protocol: TCP
-        env:
-        - name: PORT
-          value: "30005"
-        - name: NODE_ENV
-          value: "production"
-        resources:
-          requests:
-            memory: "256Mi"
-            cpu: "100m"
-          limits:
-            memory: "512Mi"
-            cpu: "300m"
-        readinessProbe:
-          httpGet:
-            path: /
-            port: 30005
-            scheme: HTTP
-          initialDelaySeconds: 15
-          periodSeconds: 10
-          timeoutSeconds: 5
+        - name: cbs-simulator
+          image: ammariamine/cbs-simulator:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 30005
+              name: http
+              protocol: TCP
+          env:
+            - name: PORT
+              value: "30005"
+            - name: NODE_ENV
+              value: "production"
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "300m"
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 30005
+              scheme: HTTP
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
           successThreshold: 1
           failureThreshold: 3
-        livenessProbe:
+          livenessProbe:
           httpGet:
             path: /
             port: 30005
@@ -86,8 +86,8 @@ spec:
     app: cbs-simulator
   ports:
     - protocol: TCP
-  port: 30005
-  targetPort: 30005
+      port: 30005
+      targetPort: 30005
       name: http
   sessionAffinity: None
 
@@ -106,9 +106,9 @@ spec:
     app: cbs-simulator
   ports:
     - protocol: TCP
-  port: 30005
-  targetPort: 30005
-  nodePort: 30005
+      port: 30005
+      targetPort: 30005
+      nodePort: 30005
       name: http
   sessionAffinity: None
 
@@ -165,7 +165,7 @@ spec:
           timeoutSeconds: 5
           successThreshold: 1
           failureThreshold: 3
-        livenessProbe:
+          livenessProbe:
           httpGet:
             path: /health
             port: 3000
@@ -193,7 +193,7 @@ spec:
     - protocol: TCP
       port: 3000
       targetPort: 3000
-  nodePort: 30003
+      nodePort: 30003
       name: http
   sessionAffinity: None
 
@@ -248,7 +248,7 @@ spec:
           timeoutSeconds: 5
           successThreshold: 1
           failureThreshold: 3
-        livenessProbe:
+          livenessProbe:
           httpGet:
             path: /
             port: 80
