@@ -58,17 +58,17 @@ spec:
             initialDelaySeconds: 15
             periodSeconds: 10
             timeoutSeconds: 5
-          successThreshold: 1
-          failureThreshold: 3
+            successThreshold: 1
+            failureThreshold: 3
           livenessProbe:
-          httpGet:
-            path: /
-            port: 30005
-            scheme: HTTP
-          initialDelaySeconds: 30
-          periodSeconds: 15
-          timeoutSeconds: 5
-          failureThreshold: 3
+            httpGet:
+              path: /
+              port: 30005
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
       restartPolicy: Always
 
 ---
@@ -165,7 +165,7 @@ spec:
           timeoutSeconds: 5
           successThreshold: 1
           failureThreshold: 3
-          livenessProbe:
+        livenessProbe:
           httpGet:
             path: /health
             port: 3000
@@ -248,7 +248,7 @@ spec:
           timeoutSeconds: 5
           successThreshold: 1
           failureThreshold: 3
-          livenessProbe:
+        livenessProbe:
           httpGet:
             path: /
             port: 80
