@@ -35,12 +35,12 @@ spec:
           image: ammariamine/cbs-simulator:latest
           imagePullPolicy: Always
           ports:
-            - containerPort: 30005
+            - containerPort: 4000
               name: http
               protocol: TCP
           env:
             - name: PORT
-              value: "30005"
+              value: "4000"
             - name: NODE_ENV
               value: "production"
           resources:
@@ -53,7 +53,7 @@ spec:
           readinessProbe:
             httpGet:
               path: /
-              port: 30005
+              port: 4000
               scheme: HTTP
             initialDelaySeconds: 15
             periodSeconds: 10
@@ -63,7 +63,7 @@ spec:
           livenessProbe:
             httpGet:
               path: /
-              port: 30005
+              port: 4000
               scheme: HTTP
             initialDelaySeconds: 30
             periodSeconds: 15
