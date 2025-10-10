@@ -228,7 +228,7 @@ spec:
           protocol: TCP
         env:
         - name: REACT_APP_API_URL
-          value: "http://192.168.72.128:30005"
+          value: "http://192.168.72.128:30003"
         - name: REACT_APP_MIDDLEWARE_URL
           value: "http://middleware-service:3000"
         resources:

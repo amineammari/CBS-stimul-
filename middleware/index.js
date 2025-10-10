@@ -10,7 +10,11 @@ const app = express();
 const port = 3000;
 
 app.use(express.json());
-app.use(cors()); // Activer CORS pour toutes les routes
+// Allow only dashboard NodePort origin for CORS
+app.use(cors({
+    origin: 'http://192.168.72.128:30004',
+    credentials: true
+}));
 
 // --- Axios Client for CBS ---
 const cbsClient = axios.create({
