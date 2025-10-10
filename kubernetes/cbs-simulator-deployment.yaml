@@ -3,6 +3,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: cbs-simulator
+  namespace: cbs-system
   labels:
     app: cbs-simulator
 spec:
@@ -24,6 +25,8 @@ spec:
         env:
         - name: PORT
           value: "4000"
+        - name: NODE_ENV
+          value: "production"
         resources:
           requests:
             memory: "128Mi"
@@ -33,13 +36,13 @@ spec:
             cpu: "200m"
         livenessProbe:
           httpGet:
-            path: /
+            path: /health
             port: 4000
           initialDelaySeconds: 30
           periodSeconds: 10
         readinessProbe:
           httpGet:
-            path: /
+            path: /health
             port: 4000
           initialDelaySeconds: 5
           periodSeconds: 5
@@ -48,6 +51,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: cbs-simulator-service
+  namespace: cbs-system
 spec:
   selector:
     app: cbs-simulator

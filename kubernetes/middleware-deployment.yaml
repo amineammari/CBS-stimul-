@@ -3,6 +3,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: middleware
+  namespace: cbs-system
   labels:
     app: middleware
 spec:
@@ -24,6 +25,8 @@ spec:
         env:
         - name: PORT
           value: "3000"
+        - name: NODE_ENV
+          value: "production"
         - name: CBS_SIMULATOR_URL
           value: "http://cbs-simulator-service:4000"
         resources:
@@ -46,10 +49,28 @@ spec:
           initialDelaySeconds: 5
           periodSeconds: 5
 ---
+# Middleware Service (ClusterIP for internal communication)
 apiVersion: v1
 kind: Service
 metadata:
   name: middleware-service
+  namespace: cbs-system
+spec:
+  type: ClusterIP
+  selector:
+    app: middleware
+  ports:
+    - protocol: TCP
+      port: 3000
+      targetPort: 3000
+
+---
+# Middleware NodePort Service (for external access)
+apiVersion: v1
+kind: Service
+metadata:
+  name: middleware-nodeport
+  namespace: cbs-system
 spec:
   type: NodePort
   selector:

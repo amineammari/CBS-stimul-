@@ -286,6 +286,78 @@ app.get('/cbs/accounts', (req, res) => {
   res.json(Object.values(accounts));
 });
 
+// Additional endpoints for middleware compatibility
+app.get('/api/accounts/:accountNumber', (req, res) => {
+  const account = accounts[req.params.accountNumber];
+  if (account) {
+    res.json(account);
+  } else {
+    res.status(404).json({ error: 'Account not found', accountNumber: req.params.accountNumber });
+  }
+});
+
+app.get('/api/balance/:accountNumber', (req, res) => {
+  const account = accounts[req.params.accountNumber];
+  if (account) {
+    res.json({ 
+      accountNumber: req.params.accountNumber,
+      balance: account.balance,
+      currency: account.currency
+    });
+  } else {
+    res.status(404).json({ error: 'Account not found', accountNumber: req.params.accountNumber });
+  }
+});
+
+app.post('/api/transactions', (req, res) => {
+  const { accountNumber, amount, type, description } = req.body;
+  
+  if (!accountNumber || !amount || !type) {
+    return res.status(400).json({ 
+      error: 'Missing required fields', 
+      required: ['accountNumber', 'amount', 'type'] 
+    });
+  }
+
+  const account = accounts[accountNumber];
+  if (!account) {
+    return res.status(404).json({ error: 'Account not found', accountNumber });
+  }
+
+  if (type === 'debit' && account.balance < amount) {
+    return res.status(400).json({ 
+      error: 'Insufficient funds',
+      available: account.balance,
+      requested: amount
+    });
+  }
+
+  // Process transaction
+  if (type === 'credit') {
+    account.balance += amount;
+  } else if (type === 'debit') {
+    account.balance -= amount;
+  }
+  account.updatedAt = new Date().toISOString();
+
+  const transaction = {
+    id: `TRN${String(transactionCounter++).padStart(3, '0')}`,
+    type: type.toUpperCase(),
+    date: new Date().toISOString(),
+    description: description || `${type} transaction`,
+    montant: type === 'credit' ? amount : -amount,
+  };
+
+  if (!history[accountNumber]) history[accountNumber] = [];
+  history[accountNumber].push(transaction);
+
+  res.status(201).json({
+    message: 'Transaction processed successfully',
+    transaction: transaction,
+    account: account
+  });
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Error:', err);
@@ -324,6 +396,9 @@ app.listen(port, host, () => {
   console.log('  GET  /cbs/account/:id/history - Get account history');
   console.log('  GET  /cbs/history/:id      - Get account with history');
   console.log('  POST /cbs/transfer         - Transfer between accounts');
+  console.log('  GET  /api/accounts/:accountNumber - Get account by number');
+  console.log('  GET  /api/balance/:accountNumber  - Get account balance');
+  console.log('  POST /api/transactions     - Process transaction');
   console.log('========================================');
 });
 

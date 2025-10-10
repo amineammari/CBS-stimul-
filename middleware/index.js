@@ -10,15 +10,15 @@ const app = express();
 const port = 3000;
 
 app.use(express.json());
-// Allow only dashboard NodePort origin for CORS
+// Allow dashboard service and NodePort origins for CORS
 app.use(cors({
-    origin: 'http://192.168.72.128:30004',
+    origin: ['http://dashboard-service:80', 'http://192.168.72.128:30004', 'http://192.168.72.129:30004', 'http://192.168.72.130:30004'],
     credentials: true
 }));
 
 // --- Axios Client for CBS ---
 const cbsClient = axios.create({
-    baseURL: process.env.CBS_SIMULATOR_URL || 'http://cbs-simulator-service:30003', // Use k8s service and NodePort by default
+    baseURL: process.env.CBS_SIMULATOR_URL || 'http://cbs-simulator-service:4000', // Use k8s service and correct port
 });
 
 // Interceptor to measure response time for logging
@@ -495,7 +495,7 @@ app.get('/api/accounts/:accountNumber', async (req, res) => {
     try {
         const { accountNumber } = req.params;
         console.log(`Fetching account ${accountNumber} from CBS Simulator`);
-    const response = await axios.get(`${process.env.CBS_SIMULATOR_URL || 'http://cbs-simulator-service:30003'}/api/accounts/${accountNumber}`, { timeout: 5000 });
+    const response = await axios.get(`${process.env.CBS_SIMULATOR_URL || 'http://cbs-simulator-service:4000'}/api/accounts/${accountNumber}`, { timeout: 5000 });
         res.status(200).json(response.data);
     } catch (error) {
         console.error('Error fetching account:', error.message);
@@ -511,7 +511,7 @@ app.post('/api/transactions', async (req, res) => {
     try {
         const transaction = req.body;
         console.log('Processing transaction:', transaction);
-    const response = await axios.post(`${process.env.CBS_SIMULATOR_URL || 'http://cbs-simulator-service:30003'}/api/transactions`, transaction, { timeout: 5000 });
+    const response = await axios.post(`${process.env.CBS_SIMULATOR_URL || 'http://cbs-simulator-service:4000'}/api/transactions`, transaction, { timeout: 5000 });
         res.status(201).json(response.data);
     } catch (error) {
         console.error('Error processing transaction:', error.message);
@@ -527,7 +527,7 @@ app.get('/api/balance/:accountNumber', async (req, res) => {
     try {
         const { accountNumber } = req.params;
         console.log(`Fetching balance for account ${accountNumber}`);
-    const response = await axios.get(`${process.env.CBS_SIMULATOR_URL || 'http://cbs-simulator-service:30003'}/api/balance/${accountNumber}`, { timeout: 5000 });
+    const response = await axios.get(`${process.env.CBS_SIMULATOR_URL || 'http://cbs-simulator-service:4000'}/api/balance/${accountNumber}`, { timeout: 5000 });
         res.status(200).json(response.data);
     } catch (error) {
         console.error('Error fetching balance:', error.message);
@@ -634,7 +634,7 @@ app.listen(PORT, HOST, () => {
     console.log(`Port: ${PORT}`);
     console.log(`Host: ${HOST}`);
     console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`CBS Simulator URL: ${process.env.CBS_SIMULATOR_URL || 'http://cbs-simulator-service:30003'}`);
+    console.log(`CBS Simulator URL: ${process.env.CBS_SIMULATOR_URL || 'http://cbs-simulator-service:4000'}`);
     console.log(`Time: ${new Date().toISOString()}`);
     console.log(`========================================`);
 });

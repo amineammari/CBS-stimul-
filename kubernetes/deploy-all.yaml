@@ -52,7 +52,7 @@ spec:
               cpu: "300m"
           readinessProbe:
             httpGet:
-              path: /
+              path: /health
               port: 4000
               scheme: HTTP
             initialDelaySeconds: 15
@@ -62,7 +62,7 @@ spec:
             failureThreshold: 3
           livenessProbe:
             httpGet:
-              path: /
+              path: /health
               port: 4000
               scheme: HTTP
             initialDelaySeconds: 30
@@ -86,8 +86,8 @@ spec:
     app: cbs-simulator
   ports:
     - protocol: TCP
-      port: 30005
-      targetPort: 30005
+      port: 4000
+      targetPort: 4000
       name: http
   sessionAffinity: None
 
@@ -106,8 +106,8 @@ spec:
     app: cbs-simulator
   ports:
     - protocol: TCP
-      port: 30005
-      targetPort: 30005
+      port: 4000
+      targetPort: 4000
       nodePort: 30005
       name: http
   sessionAffinity: None
@@ -147,7 +147,7 @@ spec:
         - name: NODE_ENV
           value: "production"
         - name: CBS_SIMULATOR_URL
-          value: "http://cbs-simulator-service:30005"
+          value: "http://cbs-simulator-service:4000"
         resources:
           requests:
             memory: "256Mi"
@@ -177,11 +177,31 @@ spec:
       restartPolicy: Always
 
 ---
-# Middleware Service
+# Middleware Service (ClusterIP for internal communication)
 apiVersion: v1
 kind: Service
 metadata:
   name: middleware-service
+  namespace: cbs-system
+  labels:
+    app: middleware
+spec:
+  type: ClusterIP
+  selector:
+    app: middleware
+  ports:
+    - protocol: TCP
+      port: 3000
+      targetPort: 3000
+      name: http
+  sessionAffinity: None
+
+---
+# Middleware NodePort Service (for external access)
+apiVersion: v1
+kind: Service
+metadata:
+  name: middleware-nodeport
   namespace: cbs-system
   labels:
     app: middleware
@@ -228,7 +248,7 @@ spec:
           protocol: TCP
         env:
         - name: REACT_APP_API_URL
-          value: "http://192.168.72.128:30003"
+          value: "http://middleware-service:3000"
         - name: REACT_APP_MIDDLEWARE_URL
           value: "http://middleware-service:3000"
         resources:
