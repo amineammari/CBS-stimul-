@@ -97,9 +97,9 @@ echo "  http://192.168.72.129:30004"
 echo "  http://192.168.72.130:30004"
 
 echo -e "\n${GREEN}Middleware API:${NC}"
-echo "  http://192.168.72.128:30005"
-echo "  http://192.168.72.129:30005"
-echo "  http://192.168.72.130:30005"
+echo "  http://192.168.72.128:30001"
+echo "  http://192.168.72.129:30001"
+echo "  http://192.168.72.130:30001"
 
 echo -e "\n${GREEN}📋 Useful Commands:${NC}"
 echo "====================="

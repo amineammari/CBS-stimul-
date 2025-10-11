@@ -22,15 +22,15 @@ RUN addgroup --system appgroup && \
 USER appuser
 
 # Expose the application port
-EXPOSE 30003
+EXPOSE 30001
 
 # Set environment variables
-ENV PORT=30003
+ENV PORT=30001
 ENV NODE_ENV=production
 
 # Add health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:30003/', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+    CMD node -e "require('http').get('http://localhost:30001/', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
 # Start the application
 CMD ["node", "index.js"]

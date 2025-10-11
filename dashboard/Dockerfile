@@ -25,12 +25,12 @@ COPY --from=builder /app/build /usr/share/nginx/html
 # Copy custom nginx configuration if you have one
 # COPY nginx.conf /etc/nginx/nginx.conf
 
-# Expose port 80
-EXPOSE 80
+# Expose port 30004
+EXPOSE 30004
 
 # Add health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost/ || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:30004/ || exit 1
 
 # Start nginx
 CMD ["nginx", "-g", "daemon off;"]

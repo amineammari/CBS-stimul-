@@ -222,7 +222,7 @@ pipeline {
                             
                             echo "Initiating spider scan..."
                             sh """
-                                curl "http://${ZAP_HOST}:${ZAP_PORT}/JSON/spider/action/scan/?apikey=${ZAP_API_KEY}&url=http://${MASTER_IP}:30004" || true
+                                curl "http://${ZAP_HOST}:${ZAP_PORT}/JSON/spider/action/scan/?apikey=${ZAP_API_KEY}&url=http://${WORKER1_IP}:30004" || true
                             """
                             
                             echo "Waiting for spider to complete..."
@@ -230,7 +230,7 @@ pipeline {
                             
                             echo "Initiating active scan..."
                             sh """
-                                curl "http://${ZAP_HOST}:${ZAP_PORT}/JSON/ascan/action/scan/?apikey=${ZAP_API_KEY}&url=http://${MASTER_IP}:30004" || true
+                                curl "http://${ZAP_HOST}:${ZAP_PORT}/JSON/ascan/action/scan/?apikey=${ZAP_API_KEY}&url=http://${WORKER1_IP}:30004" || true
                             """
                             
                             echo "Waiting for active scan to complete..."

@@ -21,10 +21,10 @@ spec:
         image: ammariamine/cbs-simulator:latest
         imagePullPolicy: Always
         ports:
-        - containerPort: 4000
+        - containerPort: 30001
         env:
         - name: PORT
-          value: "4000"
+          value: "30001"
         - name: NODE_ENV
           value: "production"
         resources:
@@ -37,13 +37,13 @@ spec:
         livenessProbe:
           httpGet:
             path: /health
-            port: 4000
+            port: 30001
           initialDelaySeconds: 30
           periodSeconds: 10
         readinessProbe:
           httpGet:
             path: /health
-            port: 4000
+            port: 30001
           initialDelaySeconds: 5
           periodSeconds: 5
 ---
@@ -57,6 +57,6 @@ spec:
     app: cbs-simulator
   ports:
     - protocol: TCP
-      port: 4000
-      targetPort: 4000
+  port: 30001
+  targetPort: 30001
   type: ClusterIP

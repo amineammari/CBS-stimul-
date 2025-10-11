@@ -13,15 +13,15 @@ RUN npm install --production
 COPY . .
 
 # Expose the application port
-EXPOSE 3000
+EXPOSE 30003
 
 # Set environment variables
-ENV PORT=3000
+ENV PORT=30003
 ENV NODE_ENV=production
 
 # Add health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:30003/health || exit 1
 
 # Start the application
 CMD ["node", "index.js"]

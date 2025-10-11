@@ -9,15 +9,15 @@ This document outlines the configuration fixes applied to resolve the dashboard 
 **Problem**: Services were configured with inconsistent ports causing communication failures.
 
 **Fixes Applied**:
-- CBS Simulator: Standardized on port 4000 (container and service)
-- Middleware: Standardized on port 3000 (container and service)
-- Dashboard: Standardized on port 80 (container) with NodePort 30004
+- CBS Simulator: Standardized on port 30001 (container and service)
+- Middleware: Standardized on port 30003 (container and service)
+- Dashboard: Standardized on port 30004 (container and NodePort)
 
 ### 2. Service URL Configuration
 **Problem**: Components were pointing to incorrect service URLs.
 
 **Fixes Applied**:
-- Middleware CBS_SIMULATOR_URL: Changed from `http://cbs-simulator-service:30003` to `http://cbs-simulator-service:4000`
+- Middleware CBS_SIMULATOR_URL: Changed from `http://cbs-simulator-service:30003` to `http://cbs-simulator-service:30001`
 - Middleware CORS: Added support for dashboard service and all worker node IPs
 - Dashboard API URL: Confirmed correct middleware NodePort URL
 
@@ -51,9 +51,9 @@ This document outlines the configuration fixes applied to resolve the dashboard 
 Internet
     ↓
 [Master Node: 192.168.72.128]
-    ├── Dashboard (NodePort 30004) → Dashboard Service (80) → Dashboard Pods
-    ├── Middleware (NodePort 30003) → Middleware Service (3000) → Middleware Pods
-    └── CBS Simulator (NodePort 30005) → CBS Service (4000) → CBS Pods
+   ├── Dashboard (NodePort 30004) → Dashboard Service (30004) → Dashboard Pods
+   ├── Middleware (NodePort 30003) → Middleware Service (30003) → Middleware Pods
+   └── CBS Simulator (NodePort 30001) → CBS Service (30001) → CBS Pods
 
 [Worker1: 192.168.72.129] & [Worker2: 192.168.72.130]
     └── Pods distributed across workers

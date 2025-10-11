@@ -1,8 +1,8 @@
 const express = require('express');
 const app = express();
 
-// Use PORT from environment variable or default to 4000
-const port = process.env.PORT || 4000;
+// Use PORT from environment variable or default to 30001
+const port = process.env.PORT || 30001;
 const host = '0.0.0.0'; // CRITICAL: Listen on all interfaces for Docker
 
 app.use(express.json());

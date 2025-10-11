@@ -113,12 +113,12 @@ kubectl get pods -n cbs-system
 Write-Host "`nAccess URLs:" -ForegroundColor Yellow
 Write-Host "Dashboard: http://$MasterIP:30004" -ForegroundColor Green
 Write-Host "Middleware API: http://$MasterIP:30003" -ForegroundColor Green
-Write-Host "CBS Simulator: http://$MasterIP:30005" -ForegroundColor Green
+Write-Host "CBS Simulator: http://$MasterIP:30001" -ForegroundColor Green
 
 Write-Host "`nHealth Check URLs:" -ForegroundColor Yellow
 Write-Host "Dashboard Health: http://$MasterIP:30004/" -ForegroundColor Green
 Write-Host "Middleware Health: http://$MasterIP:30003/health" -ForegroundColor Green
-Write-Host "CBS Simulator Health: http://$MasterIP:30005/health" -ForegroundColor Green
+Write-Host "CBS Simulator Health: http://$MasterIP:30001/health" -ForegroundColor Green
 
 Write-Host "`n=========================================" -ForegroundColor Cyan
 Write-Host "Deployment completed successfully!" -ForegroundColor Green
@@ -131,7 +131,7 @@ if ($testDeployment -eq "y" -or $testDeployment -eq "Y") {
     
     # Test CBS Simulator
     try {
-        $cbsResponse = Invoke-RestMethod -Uri "http://$MasterIP:30005/health" -TimeoutSec 10
+    $cbsResponse = Invoke-RestMethod -Uri "http://$MasterIP:30001/health" -TimeoutSec 10
         Write-Host "✓ CBS Simulator is responding" -ForegroundColor Green
     } catch {
         Write-Warning "✗ CBS Simulator health check failed: $_"

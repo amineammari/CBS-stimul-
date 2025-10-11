@@ -21,14 +21,14 @@ spec:
         image: ammariamine/middleware:latest
         imagePullPolicy: Always
         ports:
-        - containerPort: 3000
+        - containerPort: 30003
         env:
         - name: PORT
-          value: "3000"
+          value: "30003"
         - name: NODE_ENV
           value: "production"
         - name: CBS_SIMULATOR_URL
-          value: "http://cbs-simulator-service:4000"
+          value: "http://cbs-simulator-service:30001"
         resources:
           requests:
             memory: "256Mi"
@@ -39,13 +39,13 @@ spec:
         livenessProbe:
           httpGet:
             path: /health
-            port: 3000
+            port: 30003
           initialDelaySeconds: 30
           periodSeconds: 10
         readinessProbe:
           httpGet:
             path: /health
-            port: 3000
+            port: 30003
           initialDelaySeconds: 5
           periodSeconds: 5
 ---
@@ -61,8 +61,8 @@ spec:
     app: middleware
   ports:
     - protocol: TCP
-      port: 3000
-      targetPort: 3000
+  port: 30003
+  targetPort: 30003
 
 ---
 # Middleware NodePort Service (for external access)
@@ -77,6 +77,6 @@ spec:
     app: middleware
   ports:
     - protocol: TCP
-      port: 3000
-      targetPort: 3000
-      nodePort: 30003
+  port: 30003
+  targetPort: 30003
+  nodePort: 30003
