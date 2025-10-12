@@ -67,11 +67,23 @@ pipeline {
                         def apps = ['cbs-simulator', 'middleware', 'dashboard']
                         apps.each { app ->
                             echo "Building ${app}..."
-                            sh "docker build --no-cache -t ${DOCKER_REGISTRY}/${app}:latest ./${app}"
-                            
+                            if (app == 'dashboard') {
+                                // Pass REACT_APP_API_URL as build-arg for React
+                                sh """
+                                    docker build --no-cache \
+                                        -t ${DOCKER_REGISTRY}/${app}:latest \
+                                        --build-arg REACT_APP_API_URL=http://middleware-service:30003 \
+                                        ./${app}
+                                """
+                            } else {
+                                sh """
+                                    docker build --no-cache \
+                                        -t ${DOCKER_REGISTRY}/${app}:latest \
+                                        ./${app}
+                                """
+                            }
                             echo "Pushing ${app}..."
                             sh "docker push ${DOCKER_REGISTRY}/${app}:latest"
-                            
                             echo "✓ ${app} built and pushed successfully"
                         }
                     }
@@ -79,12 +91,13 @@ pipeline {
             }
         }
 
+
         stage('Image Security Scan (Trivy)') {
             steps {
                 script {
                     def apps = ['cbs-simulator', 'middleware', 'dashboard']
                     apps.each { app ->
-                        echo "Scanning ${app} for vulnerabilities..."
+                        echo "🔍 Scanning ${app} for vulnerabilities..."
                         sh "trivy image --exit-code 0 --severity HIGH,CRITICAL ${DOCKER_REGISTRY}/${app}:latest > ${app}-trivy-report.txt || true"
                     }
                 }
@@ -111,14 +124,9 @@ pipeline {
                         def apps = ['cbs-simulator', 'middleware', 'dashboard']
                         apps.each { app ->
                             echo "Checking rollout status for: ${app}"
-                            
-                            // Use timeout wrapper for better control
                             timeout(time: 6, unit: 'MINUTES') {
-                                sh """
-                                    kubectl rollout status deployment/${app} -n ${K8S_NAMESPACE} --timeout=300s
-                                """
+                                sh "kubectl rollout status deployment/${app} -n ${K8S_NAMESPACE} --timeout=300s"
                             }
-                            
                             echo "✓ ${app} deployment successful"
                         }
                         
@@ -133,26 +141,20 @@ pipeline {
                             echo "Images in use:"
                             kubectl get deployments -n ${K8S_NAMESPACE} -o jsonpath='{range .items[*]}{.metadata.name}{": "}{.spec.template.spec.containers[0].image}{"\\n"}{end}'
                         """
-                        
                     } catch (Exception e) {
                         echo "=== DEPLOYMENT FAILED - Gathering Debug Information ==="
-                        
                         sh """
                             echo "=== All Resources in Namespace ==="
                             kubectl get all -n ${K8S_NAMESPACE} || true
-                            
                             echo ""
                             echo "=== Deployment Details ==="
                             kubectl describe deployments -n ${K8S_NAMESPACE} || true
-                            
                             echo ""
                             echo "=== Pod Details ==="
                             kubectl describe pods -n ${K8S_NAMESPACE} || true
-                            
                             echo ""
                             echo "=== Recent Events ==="
                             kubectl get events -n ${K8S_NAMESPACE} --sort-by='.lastTimestamp' --field-selector type!=Normal || true
-                            
                             echo ""
                             echo "=== Pod Logs ==="
                             for pod in \$(kubectl get pods -n ${K8S_NAMESPACE} -o jsonpath='{.items[*].metadata.name}'); do
@@ -160,13 +162,11 @@ pipeline {
                                 kubectl logs \$pod -n ${K8S_NAMESPACE} --tail=100 --all-containers=true || true
                                 echo ""
                             done
-                            
                             echo ""
                             echo "=== Node Status ==="
                             kubectl top nodes || true
                             kubectl describe nodes || true
                         """
-                        
                         error("Deployment failed: ${e.message}")
                     }
                 }
@@ -178,32 +178,19 @@ pipeline {
                 script {
                     echo "=== Verifying Application Health ==="
                     sh """
-                        # Wait a bit for services to stabilize
                         sleep 15
-                        
-                        # Check if pods are actually running
                         RUNNING_PODS=\$(kubectl get pods -n ${K8S_NAMESPACE} --field-selector=status.phase=Running --no-headers | wc -l)
                         TOTAL_PODS=\$(kubectl get pods -n ${K8S_NAMESPACE} --no-headers | wc -l)
-                        
                         echo "Running Pods: \$RUNNING_PODS / \$TOTAL_PODS"
-                        
                         if [ "\$RUNNING_PODS" -eq 0 ]; then
                             echo "ERROR: No pods are running!"
                             exit 1
                         fi
-                        
-                        # Test service endpoints
                         echo ""
                         echo "Testing service endpoints..."
-                        
-                        # Test dashboard (NodePort 30004)
                         curl -f -s -o /dev/null -w "Dashboard (port 30004): HTTP %{http_code}\\n" http://${MASTER_IP}:30004 || echo "Dashboard: Not accessible"
-                        
-                        # Test middleware (NodePort 30003)
                         curl -f -s -o /dev/null -w "Middleware (port 30003): HTTP %{http_code}\\n" http://${MASTER_IP}:30003 || echo "Middleware: Not accessible"
                         curl -f -s -o /dev/null -w "Middleware Health: HTTP %{http_code}\\n" http://${MASTER_IP}:30003/health || echo "Middleware /health: Not accessible"
-                        
-                        # Test simulator (NodePort 30001)
                         curl -f -s -o /dev/null -w "Simulator (port 30001): HTTP %{http_code}\\n" http://${MASTER_IP}:30001 || echo "Simulator: Not accessible"
                     """
                 }
@@ -216,30 +203,15 @@ pipeline {
                     try {
                         withCredentials([string(credentialsId: 'owasp-zap-api-key', variable: 'ZAP_API_KEY')]) {
                             echo "=== Starting OWASP ZAP Security Scan ==="
-                            
-                            // Wait for application to be ready
                             sh "sleep 10"
-                            
                             echo "Initiating spider scan..."
-                            sh """
-                                curl "http://${ZAP_HOST}:${ZAP_PORT}/JSON/spider/action/scan/?apikey=${ZAP_API_KEY}&url=http://${WORKER1_IP}:30004" || true
-                            """
-                            
-                            echo "Waiting for spider to complete..."
+                            sh "curl 'http://${ZAP_HOST}:${ZAP_PORT}/JSON/spider/action/scan/?apikey=${ZAP_API_KEY}&url=http://${WORKER1_IP}:30004' || true"
                             sh "sleep 30"
-                            
                             echo "Initiating active scan..."
-                            sh """
-                                curl "http://${ZAP_HOST}:${ZAP_PORT}/JSON/ascan/action/scan/?apikey=${ZAP_API_KEY}&url=http://${WORKER1_IP}:30004" || true
-                            """
-                            
-                            echo "Waiting for active scan to complete..."
+                            sh "curl 'http://${ZAP_HOST}:${ZAP_PORT}/JSON/ascan/action/scan/?apikey=${ZAP_API_KEY}&url=http://${WORKER1_IP}:30004' || true"
                             sh "sleep 60"
-                            
                             echo "Generating report..."
-                            sh """
-                                curl "http://${ZAP_HOST}:${ZAP_PORT}/OTHER/core/other/htmlreport/?apikey=${ZAP_API_KEY}" -o owasp-zap-report.html || true
-                            """
+                            sh "curl 'http://${ZAP_HOST}:${ZAP_PORT}/OTHER/core/other/htmlreport/?apikey=${ZAP_API_KEY}' -o owasp-zap-report.html || true"
                         }
                     } catch (Exception e) {
                         echo "OWASP ZAP scan failed: ${e.message}"
@@ -253,12 +225,8 @@ pipeline {
     post {
         always {
             echo '=== Pipeline Execution Complete ==='
-            
             script {
-                // Archive artifacts
                 archiveArtifacts artifacts: '*-npm-audit.json, *-trivy-report.txt, owasp-zap-report.html', allowEmptyArchive: true, fingerprint: true
-                
-                // Final status report
                 sh """
                     echo "Final Deployment Status:"
                     kubectl get all -n ${K8S_NAMESPACE} || true

@@ -1,4 +1,3 @@
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -21,10 +20,7 @@ spec:
         image: ammariamine/dashboard:latest
         imagePullPolicy: Always
         ports:
-        - containerPort: 30004
-        env:
-        - name: REACT_APP_API_URL
-          value: "http://middleware-service:30003"
+        - containerPort: 80   # Corrected: Nginx listens on 80 inside container
         resources:
           requests:
             memory: "128Mi"
@@ -35,13 +31,13 @@ spec:
         livenessProbe:
           httpGet:
             path: /
-            port: 30004
+            port: 80   # Corrected
           initialDelaySeconds: 30
           periodSeconds: 10
         readinessProbe:
           httpGet:
             path: /
-            port: 30004
+            port: 80   # Corrected
           initialDelaySeconds: 5
           periodSeconds: 5
 ---
@@ -56,6 +52,6 @@ spec:
     app: dashboard
   ports:
     - protocol: TCP
-  port: 30004
-  targetPort: 30004
-  nodePort: 30004
+      port: 30004       # External port (NodePort)
+      targetPort: 80    # Matches containerPort
+      nodePort: 30004

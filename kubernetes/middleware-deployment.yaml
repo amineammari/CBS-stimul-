@@ -1,4 +1,107 @@
 ---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cbs-system
+  labels:
+    name: cbs-system
+
+---
+# CBS Simulator Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cbs-simulator
+  namespace: cbs-system
+  labels:
+    app: cbs-simulator
+    tier: backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: cbs-simulator
+  template:
+    metadata:
+      labels:
+        app: cbs-simulator
+        tier: backend
+    spec:
+      containers:
+      - name: cbs-simulator
+        image: ammariamine/cbs-simulator:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 4000
+          name: http
+          protocol: TCP
+        env:
+        - name: PORT
+          value: "4000"
+        - name: NODE_ENV
+          value: "production"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "300m"
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 4000
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 4000
+          initialDelaySeconds: 30
+          periodSeconds: 15
+          timeoutSeconds: 5
+          failureThreshold: 3
+
+---
+# CBS Simulator ClusterIP Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: cbs-simulator-service
+  namespace: cbs-system
+spec:
+  type: ClusterIP
+  selector:
+    app: cbs-simulator
+  ports:
+  - protocol: TCP
+    port: 4000
+    targetPort: 4000
+    name: http
+
+---
+# CBS Simulator NodePort Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: cbs-simulator-nodeport
+  namespace: cbs-system
+spec:
+  type: NodePort
+  selector:
+    app: cbs-simulator
+  ports:
+  - protocol: TCP
+    port: 4000
+    targetPort: 4000
+    nodePort: 30005
+    name: http
+
+---
+# Middleware Deployment
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -6,6 +109,7 @@ metadata:
   namespace: cbs-system
   labels:
     app: middleware
+    tier: backend
 spec:
   replicas: 2
   selector:
@@ -15,41 +119,50 @@ spec:
     metadata:
       labels:
         app: middleware
+        tier: backend
     spec:
       containers:
       - name: middleware
         image: ammariamine/middleware:latest
         imagePullPolicy: Always
         ports:
-        - containerPort: 30003
+        - containerPort: 3000
+          name: http
+          protocol: TCP
         env:
         - name: PORT
-          value: "30003"
+          value: "3000"
         - name: NODE_ENV
           value: "production"
         - name: CBS_SIMULATOR_URL
-          value: "http://cbs-simulator-service:30001"
+          value: "http://cbs-simulator-service:4000"
         resources:
           requests:
             memory: "256Mi"
             cpu: "150m"
           limits:
             memory: "512Mi"
-            cpu: "300m"
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 30003
-          initialDelaySeconds: 30
-          periodSeconds: 10
+            cpu: "400m"
         readinessProbe:
           httpGet:
             path: /health
-            port: 30003
-          initialDelaySeconds: 5
-          periodSeconds: 5
+            port: 3000
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 15
+          timeoutSeconds: 5
+          failureThreshold: 3
+
 ---
-# Middleware Service (ClusterIP for internal communication)
+# Middleware ClusterIP Service
 apiVersion: v1
 kind: Service
 metadata:
@@ -60,12 +173,13 @@ spec:
   selector:
     app: middleware
   ports:
-    - protocol: TCP
-  port: 30003
-  targetPort: 30003
+  - protocol: TCP
+    port: 3000
+    targetPort: 3000
+    name: http
 
 ---
-# Middleware NodePort Service (for external access)
+# Middleware NodePort Service
 apiVersion: v1
 kind: Service
 metadata:
@@ -76,7 +190,83 @@ spec:
   selector:
     app: middleware
   ports:
-    - protocol: TCP
-  port: 30003
-  targetPort: 30003
-  nodePort: 30003
+  - protocol: TCP
+    port: 3000
+    targetPort: 3000
+    nodePort: 30003
+    name: http
+
+---
+# Dashboard Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dashboard
+  namespace: cbs-system
+  labels:
+    app: dashboard
+    tier: frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: dashboard
+  template:
+    metadata:
+      labels:
+        app: dashboard
+        tier: frontend
+    spec:
+      containers:
+      - name: dashboard
+        image: ammariamine/dashboard:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
+          name: http
+          protocol: TCP
+        env:
+        - name: REACT_APP_API_URL
+          value: "http://middleware-service:3000"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 20
+          periodSeconds: 15
+          timeoutSeconds: 5
+          failureThreshold: 3
+
+---
+# Dashboard NodePort Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: dashboard-service
+  namespace: cbs-system
+spec:
+  type: NodePort
+  selector:
+    app: dashboard
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 80
+    nodePort: 30004
+    name: http

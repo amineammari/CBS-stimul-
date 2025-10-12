@@ -57,6 +57,6 @@ spec:
     app: cbs-simulator
   ports:
     - protocol: TCP
-  port: 30001
-  targetPort: 30001
+      port: 30001
+      targetPort: 30001
   type: ClusterIP

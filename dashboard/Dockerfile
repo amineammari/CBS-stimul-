@@ -14,6 +14,9 @@ RUN npm install
 COPY . .
 
 # Build the React application
+ARG REACT_APP_API_URL
+ENV REACT_APP_API_URL=$REACT_APP_API_URL
+
 RUN npm run build
 
 # Production stage
@@ -22,15 +25,12 @@ FROM nginx:alpine
 # Copy built files from builder stage
 COPY --from=builder /app/build /usr/share/nginx/html
 
-# Copy custom nginx configuration if you have one
-# COPY nginx.conf /etc/nginx/nginx.conf
+# Expose default HTTP port (must match Kubernetes containerPort 80)
+EXPOSE 80
 
-# Expose port 30004
-EXPOSE 30004
-
-# Add health check
+# Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:30004/ || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost/ || exit 1
 
 # Start nginx
 CMD ["nginx", "-g", "daemon off;"]
