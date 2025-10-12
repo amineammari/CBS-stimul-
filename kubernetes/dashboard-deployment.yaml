@@ -16,30 +16,33 @@ spec:
         app: dashboard
     spec:
       containers:
-      - name: dashboard
-        image: ammariamine/dashboard:latest
-        imagePullPolicy: Always
-        ports:
-        - containerPort: 80   # Corrected: Nginx listens on 80 inside container
-        resources:
-          requests:
-            memory: "128Mi"
-            cpu: "100m"
-          limits:
-            memory: "256Mi"
-            cpu: "200m"
-        livenessProbe:
-          httpGet:
-            path: /
-            port: 80   # Corrected
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /
-            port: 80   # Corrected
-          initialDelaySeconds: 5
-          periodSeconds: 5
+        - name: dashboard
+          image: ammariamine/dashboard:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+          env:
+            - name: REACT_APP_API_URL
+              value: "http://192.168.72.128:30003" # NodePort du middleware
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 5
 ---
 apiVersion: v1
 kind: Service
@@ -53,5 +56,5 @@ spec:
   ports:
     - protocol: TCP
       port: 30004       # External port (NodePort)
-      targetPort: 80    # Matches containerPort
+      targetPort: 80    # Container port inside pod
       nodePort: 30004
