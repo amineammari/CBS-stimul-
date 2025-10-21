@@ -28,24 +28,11 @@ RUN npm run build
 # Production stage
 FROM nginx:1.25-alpine
 
-# Use existing nginx user for security (nginx user already exists in nginx:alpine)
-# No need to create user/group as they already exist
-
 # Copy built files from builder
 COPY --from=builder /app/build /usr/share/nginx/html
 
 # Set proper ownership
-RUN chown -R nginx:nginx /usr/share/nginx/html && \
-    chown -R nginx:nginx /var/cache/nginx && \
-    chown -R nginx:nginx /var/log/nginx && \
-    chown -R nginx:nginx /etc/nginx/conf.d
-
-# Create nginx directories with proper permissions
-RUN touch /var/run/nginx.pid && \
-    chown -R nginx:nginx /var/run/nginx.pid
-
-# Switch to non-root user
-USER nginx
+RUN chown -R nginx:nginx /usr/share/nginx/html
 
 # Expose HTTP port 80 (must match containerPort in k8s)
 EXPOSE 80
