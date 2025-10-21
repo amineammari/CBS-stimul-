@@ -52,8 +52,10 @@ pipeline {
                     def apps = ['cbs-simulator', 'middleware', 'dashboard']
                     apps.each { app ->
                         dir(app) {
-                            sh 'npm install'
+                            echo "🔍 Running npm audit for ${app}..."
+                            sh 'npm install --no-audit --no-fund'
                             sh "npm audit --json > ../${app}-npm-audit.json || true"
+                            sh "npm audit --audit-level=high || true"
                         }
                     }
                 }
@@ -68,11 +70,11 @@ pipeline {
                         apps.each { app ->
                             echo "Building ${app}..."
                             if (app == 'dashboard') {
-                                // Pass REACT_APP_API_URL as build-arg for React
+                                // Pass REACT_APP_API_URL as build-arg for React (use NodePort for external access)
                                 sh """
                                     docker build --no-cache \
                                         -t ${DOCKER_REGISTRY}/${app}:latest \
-                                        --build-arg REACT_APP_API_URL=http://middleware-service:30003 \
+                                        --build-arg REACT_APP_API_URL=http://${MASTER_IP}:30003 \
                                         ./${app}
                                 """
                             } else {
@@ -82,6 +84,12 @@ pipeline {
                                         ./${app}
                                 """
                             }
+                            echo "Testing ${app} image locally..."
+                            sh "docker run --rm -d --name test-${app} -p 8080:80 ${DOCKER_REGISTRY}/${app}:latest || true"
+                            sh "sleep 5"
+                            sh "curl -f http://localhost:8080 || echo 'Health check failed'"
+                            sh "docker stop test-${app} || true"
+                            sh "docker rm test-${app} || true"
                             echo "Pushing ${app}..."
                             sh "docker push ${DOCKER_REGISTRY}/${app}:latest"
                             echo "✓ ${app} built and pushed successfully"
@@ -191,7 +199,7 @@ pipeline {
                         curl -f -s -o /dev/null -w "Dashboard (port 30004): HTTP %{http_code}\\n" http://${MASTER_IP}:30004 || echo "Dashboard: Not accessible"
                         curl -f -s -o /dev/null -w "Middleware (port 30003): HTTP %{http_code}\\n" http://${MASTER_IP}:30003 || echo "Middleware: Not accessible"
                         curl -f -s -o /dev/null -w "Middleware Health: HTTP %{http_code}\\n" http://${MASTER_IP}:30003/health || echo "Middleware /health: Not accessible"
-                        curl -f -s -o /dev/null -w "Simulator (port 30001): HTTP %{http_code}\\n" http://${MASTER_IP}:30001 || echo "Simulator: Not accessible"
+                        curl -f -s -o /dev/null -w "Simulator (port 30005): HTTP %{http_code}\\n" http://${MASTER_IP}:30005 || echo "Simulator: Not accessible"
                     """
                 }
             }
@@ -238,7 +246,7 @@ pipeline {
             echo '=== Access URLs ==='
             echo "Dashboard: http://${MASTER_IP}:30004"
             echo "Middleware: http://${MASTER_IP}:30003"
-            echo "Simulator: http://${MASTER_IP}:30001"
+            echo "Simulator: http://${MASTER_IP}:30005"
         }
         failure {
             echo '✗ Pipeline failed!'
