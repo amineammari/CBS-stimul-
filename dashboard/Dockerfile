@@ -7,8 +7,13 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm install
+# Install dependencies with security improvements and network resilience
+RUN npm config set registry https://registry.npmjs.org/ && \
+    npm config set fetch-retry-mintimeout 20000 && \
+    npm config set fetch-retry-maxtimeout 120000 && \
+    npm config set fetch-retries 5 && \
+    npm ci --only=production --ignore-scripts && \
+    npm cache clean --force
 
 # Copy all app files
 COPY . .
@@ -21,17 +26,34 @@ ENV REACT_APP_API_URL=$REACT_APP_API_URL
 RUN npm run build
 
 # Production stage
-FROM nginx:alpine
+FROM nginx:1.25-alpine
+
+# Create non-root user for security
+RUN addgroup --system --gid 1001 nginx && \
+    adduser --system --uid 1001 --ingroup nginx nginx
 
 # Copy built files from builder
 COPY --from=builder /app/build /usr/share/nginx/html
 
+# Set proper ownership
+RUN chown -R nginx:nginx /usr/share/nginx/html && \
+    chown -R nginx:nginx /var/cache/nginx && \
+    chown -R nginx:nginx /var/log/nginx && \
+    chown -R nginx:nginx /etc/nginx/conf.d
+
+# Create nginx directories with proper permissions
+RUN touch /var/run/nginx.pid && \
+    chown -R nginx:nginx /var/run/nginx.pid
+
+# Switch to non-root user
+USER nginx
+
 # Expose HTTP port 80 (must match containerPort in k8s)
 EXPOSE 80
 
-# Healthcheck
+# Healthcheck using curl (available in nginx:alpine)
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost/ || exit 1
+    CMD curl --fail --silent --show-error http://localhost/ || exit 1
 
 # Start nginx
 CMD ["nginx", "-g", "daemon off;"]

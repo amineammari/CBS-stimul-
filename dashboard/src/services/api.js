@@ -1,6 +1,17 @@
 import axios from 'axios';
 
-const baseURL = process.env.REACT_APP_API_URL || 'http://192.168.72.129:30003'; // URL du middleware CBS
+// Prefer dynamic NodePort routing from the browser; fall back to env when provided
+const resolveBaseUrl = () => {
+  const envUrl = process.env.REACT_APP_API_URL;
+  if (envUrl && envUrl.trim().length > 0) return envUrl;
+  if (typeof window !== 'undefined' && window.location && window.location.hostname) {
+    return `http://${window.location.hostname}:30003`;
+  }
+  // Final fallback for non-browser contexts
+  return 'http://localhost:30003';
+};
+
+const baseURL = resolveBaseUrl();
 
 const apiClient = axios.create({
   baseURL,

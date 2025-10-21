@@ -7,24 +7,19 @@ const api = require('@opentelemetry/api');
 const cors = require('cors'); // Importer cors
 
 const app = express();
-const port = 30003;
+const port = 3000;
 
 app.use(express.json());
 // Allow dashboard service and NodePort origins for CORS
 app.use(cors({
-    origin: [
-        'http://dashboard-service:30004',
-        'http://localhost:30004',
-        'http://192.168.72.128:30004',
-        'http://192.168.72.129:30004',
-        'http://192.168.72.130:30004'
-    ],
+    // Reflect the request origin. This works with credentials and NodePort access.
+    origin: true,
     credentials: true
 }));
 
 // --- Axios Client for CBS ---
 const cbsClient = axios.create({
-    baseURL: process.env.CBS_SIMULATOR_URL || 'http://cbs-simulator-service:30001', // Use k8s service and correct port
+    baseURL: process.env.CBS_SIMULATOR_URL || 'http://cbs-simulator-service:4000',
 });
 
 // Interceptor to measure response time for logging
@@ -84,7 +79,7 @@ const swaggerOptions = {
             version: '1.0.0',
             description: 'API for interacting with the CBS Simulator. Cette API sert de passerelle entre le front-end et le simulateur de système bancaire central (CBS).',
         },
-    servers: [{ url: `http://localhost:30003` }],
+    servers: [{ url: `http://localhost:${process.env.PORT || port}` }],
         tags: [
             { name: 'Monitoring', description: 'Endpoints for health checks and metrics.' },
             { name: 'Customers', description: 'Operations related to customers.' },
@@ -631,7 +626,7 @@ app.use((req, res) => {
 });
 
 // Start server (preserve existing port logic)
-const PORT = process.env.PORT || port || 30003;
+const PORT = process.env.PORT || port;
 const HOST = '0.0.0.0';
 app.listen(PORT, HOST, () => {
     console.log(`========================================`);
@@ -640,7 +635,7 @@ app.listen(PORT, HOST, () => {
     console.log(`Port: ${PORT}`);
     console.log(`Host: ${HOST}`);
     console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`CBS Simulator URL: ${process.env.CBS_SIMULATOR_URL || 'http://cbs-simulator-service:30001'}`);
+    console.log(`CBS Simulator URL: ${process.env.CBS_SIMULATOR_URL || 'http://cbs-simulator-service:4000'}`);
     console.log(`Time: ${new Date().toISOString()}`);
     console.log(`========================================`);
 });

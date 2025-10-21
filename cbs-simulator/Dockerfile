@@ -6,8 +6,12 @@ WORKDIR /usr/src/app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies with security improvements
-RUN npm ci --only=production --ignore-scripts && \
+# Install dependencies with security improvements and network resilience
+RUN npm config set registry https://registry.npmjs.org/ && \
+    npm config set fetch-retry-mintimeout 20000 && \
+    npm config set fetch-retry-maxtimeout 120000 && \
+    npm config set fetch-retries 5 && \
+    npm ci --only=production --ignore-scripts && \
     npm cache clean --force
 
 # Copy application code
