@@ -28,9 +28,8 @@ RUN npm run build
 # Production stage
 FROM nginx:1.25-alpine
 
-# Create non-root user for security
-RUN addgroup --system --gid 1001 nginx && \
-    adduser --system --uid 1001 --ingroup nginx nginx
+# Use existing nginx user for security (nginx user already exists in nginx:alpine)
+# No need to create user/group as they already exist
 
 # Copy built files from builder
 COPY --from=builder /app/build /usr/share/nginx/html
