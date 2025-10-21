@@ -16,10 +16,6 @@
   "author": "Your Name",
   "license": "ISC",
   "dependencies": {
-    "express": "^4.18.2",
-    "cors": "^2.8.5",
-    "axios": "^1.12.0",
-    "dotenv": "^16.0.3",
     "@opentelemetry/api": "^1.7.0",
     "@opentelemetry/auto-instrumentations-node": "^0.41.1",
     "@opentelemetry/exporter-metrics-otlp-http": "^0.48.0",
@@ -28,6 +24,10 @@
     "@opentelemetry/sdk-metrics": "^1.21.0",
     "@opentelemetry/sdk-node": "^0.48.0",
     "@opentelemetry/semantic-conventions": "^1.21.0",
+    "axios": "^1.12.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
     "morgan": "^1.10.0",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^4.6.3"

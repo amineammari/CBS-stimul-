@@ -6,7 +6,7 @@
 [![Docker](https://img.shields.io/badge/Docker-Enabled-blue.svg)](https://www.docker.com/)
 [![OpenTelemetry](https://img.shields.io/badge/OpenTelemetry-Integrated-orange.svg)](https://opentelemetry.io/)
 [![Status](https://img.shields.io/badge/Status-Active-brightgreen.svg)]()
-[![Last Updated](https://img.shields.io/badge/Last%20Updated-August%202025-blue.svg)]()
+[![Last Updated](https://img.shields.io/badge/Last%20Updated-December%202024-blue.svg)]()
 
 ## 📋 Table of Contents
 
@@ -20,6 +20,8 @@
 - [Testing Scenarios](#-testing-scenarios)
 - [Monitoring & Observability](#-monitoring--observability)
 - [Docker Deployment](#-docker-deployment)
+- [Kubernetes Deployment](#-kubernetes-deployment)
+- [Deployment Scripts](#-deployment-scripts)
 - [Development Guidelines](#-development-guidelines)
 - [Troubleshooting](#-troubleshooting)
 - [Changelog](#-changelog)
@@ -40,6 +42,9 @@ The CBS (Core Banking System) Middleware is a comprehensive banking system simul
 - **⚡ High Performance**: Optimized for production environments
 - **🔒 Secure**: CORS-enabled with input validation
 - **📈 Scalable**: Microservices architecture for horizontal scaling
+- **☸️ Kubernetes Ready**: Complete K8s deployment with health checks
+- **🚀 CI/CD Pipeline**: Jenkins integration with automated testing
+- **📊 Advanced Monitoring**: Real-time metrics and distributed tracing
 
 ## 🏗️ Architecture
 
@@ -725,6 +730,283 @@ networks:
 - **Port**: Exposes port 4000 (configurable via environment)
 - **Health Checks**: Built-in container health monitoring
 
+## ☸️ Kubernetes Deployment
+
+### Cluster Architecture
+
+The CBS system is designed for deployment on a Kubernetes cluster with the following architecture:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Kubernetes Cluster                       │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────┐ │
+│  │   Master Node   │  │  Worker Node 1  │  │Worker Node 2│ │
+│  │ 192.168.72.128  │  │ 192.168.72.129  │  │192.168.72.130│ │
+│  └─────────────────┘  └─────────────────┘  └─────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Service Configuration
+
+| Service | Internal Port | NodePort | External Access |
+|---------|---------------|----------|-----------------|
+| **Dashboard** | 80 | 30004 | `http://<node-ip>:30004` |
+| **Middleware** | 3000 | 30003 | `http://<node-ip>:30003` |
+| **CBS Simulator** | 4000 | 30005 | `http://<node-ip>:30005` |
+
+### Namespace: `cbs-system`
+
+All services are deployed in the `cbs-system` namespace for isolation and management.
+
+### Quick Deployment
+
+#### Option 1: Deploy All Services
+```bash
+# Deploy complete CBS system
+kubectl apply -f kubernetes/deploy-all.yaml
+
+# Verify deployment
+kubectl get pods -n cbs-system
+kubectl get services -n cbs-system
+```
+
+#### Option 2: Individual Service Deployment
+```bash
+# Deploy namespace first
+kubectl apply -f kubernetes/namespace.yaml
+
+# Deploy services individually
+kubectl apply -f kubernetes/cbs-simulator-deployment.yaml
+kubectl apply -f kubernetes/middleware-deployment.yaml
+kubectl apply -f kubernetes/dashboard-deployment.yaml
+```
+
+### Service Access
+
+#### Dashboard (Frontend)
+- **URL**: `http://192.168.72.128:30004`
+- **Alternative**: `http://192.168.72.129:30004` or `http://192.168.72.130:30004`
+- **Features**: React-based banking dashboard with real-time monitoring
+
+#### Middleware API
+- **URL**: `http://192.168.72.128:30003`
+- **API Docs**: `http://192.168.72.128:30003/api-docs`
+- **Health Check**: `http://192.168.72.128:30003/health`
+
+#### CBS Simulator (Internal)
+- **Internal URL**: `http://cbs-simulator-service:4000`
+- **External URL**: `http://192.168.72.128:30005` (NodePort)
+- **Access**: Primarily for internal middleware communication
+
+### Resource Configuration
+
+#### CBS Simulator
+```yaml
+resources:
+  requests:
+    memory: "256Mi"
+    cpu: "100m"
+  limits:
+    memory: "512Mi"
+    cpu: "300m"
+```
+
+#### Middleware
+```yaml
+resources:
+  requests:
+    memory: "256Mi"
+    cpu: "150m"
+  limits:
+    memory: "512Mi"
+    cpu: "400m"
+```
+
+#### Dashboard
+```yaml
+resources:
+  requests:
+    memory: "128Mi"
+    cpu: "100m"
+  limits:
+    memory: "256Mi"
+    cpu: "200m"
+```
+
+### Health Checks
+
+All services include comprehensive health checks:
+
+#### Readiness Probes
+- **CBS Simulator**: `/health` endpoint, 15s initial delay
+- **Middleware**: `/health` endpoint, 15s initial delay  
+- **Dashboard**: `/` endpoint, 10s initial delay
+
+#### Liveness Probes
+- **CBS Simulator**: `/health` endpoint, 30s initial delay
+- **Middleware**: `/health` endpoint, 30s initial delay
+- **Dashboard**: `/` endpoint, 20s initial delay
+
+### Monitoring and Debugging
+
+#### Check Service Status
+```bash
+# View all pods
+kubectl get pods -n cbs-system
+
+# View service details
+kubectl get services -n cbs-system
+
+# View deployments
+kubectl get deployments -n cbs-system
+```
+
+#### View Logs
+```bash
+# Dashboard logs
+kubectl logs -f deployment/dashboard -n cbs-system
+
+# Middleware logs
+kubectl logs -f deployment/middleware -n cbs-system
+
+# CBS Simulator logs
+kubectl logs -f deployment/cbs-simulator -n cbs-system
+```
+
+#### Test Connectivity
+```bash
+# Test middleware from within cluster
+kubectl run test-pod --image=busybox -it --rm --restart=Never -n cbs-system -- wget -qO- http://middleware-service:3000/health
+
+# Test CBS simulator from within cluster
+kubectl run test-pod --image=busybox -it --rm --restart=Never -n cbs-system -- wget -qO- http://cbs-simulator-service:4000/health
+```
+
+### Scaling
+
+#### Horizontal Pod Autoscaling
+```bash
+# Scale middleware to 3 replicas
+kubectl scale deployment middleware --replicas=3 -n cbs-system
+
+# Scale dashboard to 2 replicas
+kubectl scale deployment dashboard --replicas=2 -n cbs-system
+```
+
+#### Resource Updates
+```bash
+# Update resource limits
+kubectl patch deployment middleware -n cbs-system -p '{"spec":{"template":{"spec":{"containers":[{"name":"middleware","resources":{"limits":{"memory":"1Gi","cpu":"500m"}}}]}}}}'
+```
+
+### Cleanup
+
+#### Remove All Services
+```bash
+# Delete all CBS services
+kubectl delete -f kubernetes/deploy-all.yaml
+
+# Delete namespace (removes everything)
+kubectl delete namespace cbs-system
+```
+
+#### Remove Individual Services
+```bash
+# Delete specific service
+kubectl delete deployment dashboard -n cbs-system
+kubectl delete service dashboard-service -n cbs-system
+```
+
+## 🚀 Deployment Scripts
+
+### Automated Deployment Scripts
+
+The project includes comprehensive deployment automation:
+
+#### PowerShell Scripts (Windows)
+- **`scripts/deploy.ps1`**: Complete deployment with health checks
+- **`scripts/rebuild-and-deploy.ps1`**: Rebuild images and redeploy
+- **`scripts/verify-deployment.ps1`**: Verify all services are running
+- **`scripts/test-connectivity.ps1`**: Test inter-service communication
+
+#### Bash Scripts (Linux/macOS)
+- **`scripts/deploy.sh`**: Complete deployment with health checks
+- **`scripts/rebuild-and-deploy.sh`**: Rebuild images and redeploy
+- **`scripts/deploy-k8s.ps1`**: Kubernetes deployment automation
+
+### Usage Examples
+
+#### Windows Deployment
+```powershell
+# Complete deployment
+.\scripts\deploy.ps1
+
+# Rebuild and redeploy
+.\scripts\rebuild-and-deploy.ps1
+
+# Verify deployment
+.\scripts\verify-deployment.ps1
+```
+
+#### Linux/macOS Deployment
+```bash
+# Make scripts executable
+chmod +x scripts/*.sh
+
+# Complete deployment
+./scripts/deploy.sh
+
+# Rebuild and redeploy
+./scripts/rebuild-and-deploy.sh
+```
+
+#### Kubernetes Deployment
+```bash
+# Deploy to Kubernetes
+./scripts/deploy-k8s.ps1
+
+# Verify Kubernetes deployment
+kubectl get pods -n cbs-system
+```
+
+### Jenkins Pipeline
+
+The project includes a `Jenkinsfile` for CI/CD automation:
+
+#### Pipeline Features
+- **Build**: Docker image creation and testing
+- **Push**: Automatic push to Docker Hub
+- **Deploy**: Kubernetes deployment automation
+- **Test**: Security testing with OWASP ZAP
+- **Quality**: Code quality analysis with SonarQube
+
+#### Jenkins Configuration
+```groovy
+pipeline {
+    agent any
+    stages {
+        stage('Build') {
+            steps {
+                sh 'docker build -t ammariamine/cbs-simulator:latest ./cbs-simulator'
+                sh 'docker build -t ammariamine/middleware:latest ./middleware'
+                sh 'docker build -t ammariamine/dashboard:latest ./dashboard'
+            }
+        }
+        stage('Test') {
+            steps {
+                sh 'docker-compose up -d'
+                sh 'npm test'
+            }
+        }
+        stage('Deploy') {
+            steps {
+                sh 'kubectl apply -f kubernetes/deploy-all.yaml'
+            }
+        }
+    }
+}
+```
+
 ## 🛠️ Development Guidelines
 
 ### Code Structure Standards
@@ -857,6 +1139,68 @@ docker system prune -a
 docker-compose up --build
 ```
 
+#### Kubernetes Issues
+
+##### Pods Stuck in Pending State
+```bash
+# Check pod events
+kubectl get events -n cbs-system --sort-by='.lastTimestamp'
+
+# Check node resources
+kubectl describe nodes
+
+# Check pod details
+kubectl describe pod <pod-name> -n cbs-system
+```
+
+##### Services Not Accessible
+```bash
+# Check service endpoints
+kubectl get endpoints -n cbs-system
+
+# Test internal connectivity
+kubectl exec -it <pod-name> -n cbs-system -- curl http://service-name:port
+
+# Check service details
+kubectl describe service <service-name> -n cbs-system
+```
+
+##### Image Pull Errors
+```bash
+# Check image pull secrets
+kubectl get secrets -n cbs-system
+
+# Force image pull
+kubectl delete pods -l app=<app-name> -n cbs-system
+
+# Check image availability
+kubectl describe pod <pod-name> -n cbs-system
+```
+
+##### Port Access Issues
+```bash
+# Check NodePort services
+kubectl get services -n cbs-system
+
+# Test external access
+curl http://<node-ip>:<nodeport>
+
+# Check firewall rules (if applicable)
+sudo ufw status
+```
+
+##### Namespace Issues
+```bash
+# Check namespace exists
+kubectl get namespaces
+
+# Create namespace if missing
+kubectl create namespace cbs-system
+
+# Check resource quotas
+kubectl describe quota -n cbs-system
+```
+
 ### Performance Tips
 
 1. **Development Mode**: Use `npm run dev` for hot-reloading
@@ -867,6 +1211,16 @@ docker-compose up --build
 ---
 
 ## 📅 Changelog
+
+### Version 1.3.0 (December 2024)
+- ✅ **Kubernetes Deployment**: Complete K8s deployment with health checks
+- ✅ **Deployment Scripts**: Automated PowerShell and Bash deployment scripts
+- ✅ **Jenkins Pipeline**: CI/CD integration with automated testing
+- ✅ **Resource Management**: Optimized resource allocation and limits
+- ✅ **Monitoring**: Enhanced observability with distributed tracing
+- ✅ **Documentation**: Comprehensive deployment and troubleshooting guides
+- ✅ **Security**: Improved container security and health checks
+- ✅ **Scalability**: Horizontal pod autoscaling support
 
 ### Version 1.2.0 (August 2025)
 - ✅ **Port Configuration**: Dashboard moved to port 3001
@@ -903,5 +1257,5 @@ This project is licensed under the ISC License.
 
 
 
-**Last Updated**: August 1, 2025  
+**Last Updated**: December 2024  
 
