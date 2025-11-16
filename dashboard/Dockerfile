@@ -4,18 +4,20 @@ FROM node:20-alpine AS builder
 # Set working directory
 WORKDIR /app
 
-# Copy package files
+# Install dependencies first (better caching)
+# Copy only package files for dependency installation
 COPY package*.json ./
 
-# Install dependencies with security improvements and network resilience
+# Install ALL dependencies (including devDependencies needed for build)
+# Configure npm for better caching and network resilience
 RUN npm config set registry https://registry.npmjs.org/ && \
     npm config set fetch-retry-mintimeout 20000 && \
     npm config set fetch-retry-maxtimeout 120000 && \
     npm config set fetch-retries 5 && \
-    npm ci --only=production --ignore-scripts && \
+    npm ci --ignore-scripts && \
     npm cache clean --force
 
-# Copy all app files
+# Copy source code (this layer will be cached if only code changes)
 COPY . .
 
 # Build-time argument for API URL
