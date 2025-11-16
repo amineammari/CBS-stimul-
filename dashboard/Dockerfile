@@ -4,24 +4,18 @@ FROM node:20-alpine AS builder
 # Set working directory
 WORKDIR /app
 
-# Install dependencies first (better caching)
-# Copy only package files for dependency installation
+# Copy package files
 COPY package*.json ./
 
-# Install ALL dependencies (including devDependencies needed for build)
-# Use npm install instead of npm ci to avoid old lockfile metadata issues
-# Configure npm for better caching and network resilience
+# Install dependencies with security improvements and network resilience
 RUN npm config set registry https://registry.npmjs.org/ && \
-    npm config set fetch-retry-mintimeout 30000 && \
-    npm config set fetch-retry-maxtimeout 300000 && \
-    npm config set fetch-retries 10 && \
-    npm config set fetch-timeout 300000 && \
-    npm config set maxsockets 1 && \
-    npm config set prefer-offline true && \
-    npm install --ignore-scripts --legacy-peer-deps && \
+    npm config set fetch-retry-mintimeout 20000 && \
+    npm config set fetch-retry-maxtimeout 120000 && \
+    npm config set fetch-retries 5 && \
+    npm ci --only=production --ignore-scripts && \
     npm cache clean --force
 
-# Copy source code (this layer will be cached if only code changes)
+# Copy all app files
 COPY . .
 
 # Build-time argument for API URL

@@ -1,0 +1,1328 @@
+\documentclass[12pt,a4paper]{report}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{geometry}
+\geometry{left=2.5cm,right=2.5cm,top=2.5cm,bottom=2.5cm}
+\usepackage{setspace}
+\onehalfspacing
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{color}
+\usepackage{longtable}
+\usepackage{caption}
+\usepackage{float}
+\usepackage{tocbibind}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{tikz}
+\usetikzlibrary{positioning,shapes,arrows,decorations.pathreplacing,calc}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage{array}
+\usepackage{booktabs}
+\hypersetup{colorlinks=true,linkcolor=black,urlcolor=black}
+
+% Configuration pour les listings
+\lstset{
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    numbers=left,
+    numberstyle=\tiny,
+    showstringspaces=false,
+    tabsize=2,
+    language=JavaScript,
+    captionpos=b
+}
+
+\begin{document}
+
+\begin{titlepage}
+    \centering
+    \vspace*{2cm}
+    {\Huge\bfseries Rapport Technique Académique\\[0.5cm] Système Bancaire Central (CBS)\\[1ex] Architecture Microservices avec Observabilité Distribuée \par}
+    \vspace{2cm}
+    {\Large Étudiant : \underline{\hspace{6cm}} \par}
+    \vspace{1cm}
+    {\Large Encadrant : \underline{\hspace{6cm}} \par}
+    \vspace{1cm}
+    {\Large Université : \underline{\hspace{6cm}} \par}
+    \vfill
+    {\large Rapport Technique — Décembre 2024 \par}
+\end{titlepage}
+
+\tableofcontents
+\listoffigures
+\listoftables
+
+\chapter*{Résumé}
+Ce rapport présente une analyse technique complète d'un Système Bancaire Central (CBS) développé selon une approche microservices moderne. Le système comprend trois composants principaux : un simulateur CBS (backend), un middleware d'orchestration avec observabilité intégrée, et un dashboard de supervision React. L'architecture utilise OpenTelemetry pour le traçage distribué, Docker pour la containerisation, et Kubernetes pour l'orchestration. Le rapport détaille les aspects techniques de chaque composant, les stratégies de déploiement, les mécanismes d'observabilité, et les bonnes pratiques de sécurité. L'approche adoptée démontre l'application réussie des principes d'architecture cloud-native avec une observabilité complète et un déploiement automatisé.
+
+\chapter{Introduction}
+
+\section{Contexte et Objectifs}
+
+Le présent rapport décrit l'architecture technique complète d'un Système Bancaire Central (CBS - Core Banking System) développé selon une approche microservices moderne. Ce système a été conçu pour démontrer les meilleures pratiques en matière d'architecture distribuée, d'observabilité, et de déploiement cloud-native.
+
+L'objectif principal de ce projet est de créer une plateforme bancaire simulée qui intègre :
+\begin{itemize}
+    \item Une architecture microservices scalable et résiliente
+    \item Un système d'observabilité complet avec traçage distribué
+    \item Un déploiement automatisé via CI/CD
+    \item Une interface utilisateur moderne et réactive
+    \item Des mécanismes de monitoring en temps réel
+\end{itemize}
+
+\section{Portée du Projet}
+
+Le système CBS développé comprend trois composants principaux :
+\begin{enumerate}
+    \item \textbf{CBS Simulator} : Simulateur du système bancaire central qui gère les données clients, comptes et transactions
+    \item \textbf{Middleware} : Couche intermédiaire agissant comme API Gateway avec traçage distribué
+    \item \textbf{Dashboard} : Interface utilisateur React pour la supervision et les opérations bancaires
+\end{enumerate}
+
+\section{Structure du Rapport}
+
+Ce rapport est organisé en plusieurs chapitres couvrant tous les aspects techniques du système, depuis l'architecture globale jusqu'aux détails d'implémentation, en passant par les stratégies de déploiement et de monitoring.
+
+\chapter{Architecture Globale du Système}
+
+\section{Vue d'Ensemble}
+
+Le système CBS suit une architecture microservices en trois couches distinctes, communiquant via des API REST. La figure \ref{fig:architecture} illustre l'architecture globale.
+
+\begin{figure}[H]
+\centering
+\begin{verbatim}
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│                 │    │                 │    │                 │
+│   Dashboard     │◄──►│   Middleware    │◄──►│  CBS Simulator  │
+│   (Port 3001)   │    │   (Port 3000)   │    │   (Port 4000)   │
+│                 │    │                 │    │                 │
+│  React + Antd   │    │  Express.js     │    │   Express.js    │
+│  Recharts       │    │  OpenTelemetry  │    │   Mock Data     │
+│  Axios Client   │    │  Swagger UI     │    │   JSON Store    │
+│                 │    │  CORS Enabled   │    │                 │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+\end{verbatim}
+\caption{Architecture globale du système CBS}
+\label{fig:architecture}
+\end{figure}
+
+\section{Flux de Données}
+
+Le flux de données dans le système suit le pattern suivant :
+
+\begin{enumerate}
+    \item \textbf{Requête Frontend} : Le Dashboard React envoie une requête HTTP à l'API Middleware
+    \item \textbf{Traitement Middleware} : Le middleware crée un span OpenTelemetry, ajoute des métadonnées de traçage, et transmet la requête au CBS Simulator
+    \item \textbf{Traitement CBS} : Le simulateur traite la requête, met à jour les données en mémoire, et retourne une réponse
+    \item \textbf{Retour Middleware} : Le middleware enregistre les métriques de performance et retourne la réponse au frontend
+    \item \textbf{Affichage Dashboard} : Le dashboard met à jour l'interface utilisateur avec les nouvelles données
+\end{enumerate}
+
+\section{Isolation et Découplage}
+
+Chaque service est indépendant et peut être déployé, mis à l'échelle et maintenu séparément. Cette architecture offre plusieurs avantages :
+
+\begin{itemize}
+    \item \textbf{Scalabilité indépendante} : Chaque service peut être mis à l'échelle selon ses besoins
+    \item \textbf{Déploiement continu} : Les mises à jour peuvent être déployées sans affecter les autres services
+    \item \textbf{Résilience} : La défaillance d'un service n'affecte pas nécessairement les autres
+    \item \textbf{Technologies hétérogènes} : Chaque service peut utiliser la technologie la plus adaptée
+\end{itemize}
+
+\chapter{Stack Technologique}
+
+\section{Technologies Backend}
+
+\subsection{Node.js et Express.js}
+
+Le système utilise Node.js version 18+ comme runtime JavaScript côté serveur. Express.js version 4.18+ est utilisé comme framework web pour les services backend.
+
+\textbf{Avantages de ce choix :}
+\begin{itemize}
+    \item Performance élevée grâce au modèle événementiel asynchrone
+    \item Écosystème npm riche avec de nombreuses bibliothèques
+    \item Facilité de développement avec JavaScript unifié frontend/backend
+    \item Support natif pour les opérations I/O asynchrones
+\end{itemize}
+
+\subsection{OpenTelemetry}
+
+OpenTelemetry est intégré pour fournir une observabilité complète du système. La configuration inclut :
+
+\begin{itemize}
+    \item \textbf{Traçage distribué} : Suivi des requêtes à travers tous les services
+    \item \textbf{Métriques} : Collecte de métriques de performance en temps réel
+    \item \textbf{Export OTLP} : Export des données vers ELK Stack via HTTP
+\end{itemize}
+
+\section{Technologies Frontend}
+
+\subsection{React 18}
+
+React 18 est utilisé pour construire l'interface utilisateur du dashboard. Les fonctionnalités clés incluent :
+
+\begin{itemize}
+    \item Composants fonctionnels avec Hooks
+    \item Gestion d'état locale avec useState et useEffect
+    \item Rendu conditionnel et listes dynamiques
+    \item Optimisation des performances avec React.memo
+\end{itemize}
+
+\subsection{Ant Design}
+
+Ant Design (antd) fournit une bibliothèque de composants UI professionnels :
+
+\begin{itemize}
+    \item Composants de formulaire (Form, Input, Select)
+    \item Composants de données (Table, Card, Statistic)
+    \item Composants de navigation (Tabs, Menu)
+    \item Système de grille responsive
+\end{itemize}
+
+\subsection{Recharts}
+
+Recharts est utilisé pour la visualisation des données en temps réel :
+
+\begin{itemize}
+    \item Graphiques linéaires pour les métriques de performance
+    \item Mise à jour automatique des données
+    \item Responsive design adaptatif
+\end{itemize}
+
+\section{Infrastructure et Déploiement}
+
+\subsection{Docker}
+
+Docker est utilisé pour la containerisation des services :
+
+\begin{itemize}
+    \item Images optimisées basées sur Node.js slim
+    \item Multi-stage builds pour réduire la taille des images
+    \item Health checks intégrés
+    \item Variables d'environnement configurables
+\end{itemize}
+
+\subsection{Kubernetes}
+
+Kubernetes orchestre le déploiement en production :
+
+\begin{itemize}
+    \item Déploiements avec réplicas multiples
+    \item Services ClusterIP et NodePort
+    \item Health checks (readiness et liveness probes)
+    \item Gestion des ressources (CPU, mémoire)
+    \item Namespace isolation (cbs-system)
+\end{itemize}
+
+\chapter{Composant CBS Simulator}
+
+\section{Description et Responsabilités}
+
+Le CBS Simulator est le composant backend qui simule les opérations d'un système bancaire central réel. Il gère :
+
+\begin{itemize}
+    \item Les données clients (4 clients simulés)
+    \item Les comptes bancaires (6 comptes de différents types)
+    \item L'historique des transactions
+    \item Les opérations de virement entre comptes
+\end{itemize}
+
+\section{Structure des Données}
+
+\subsection{Modèle de Données Client}
+
+Chaque client est représenté par la structure suivante :
+
+\begin{lstlisting}[language=JavaScript, caption=Structure de données client]
+{
+  id: 'C001',
+  prenom: 'Mohamed',
+  nom: 'Ben Ali',
+  adresse: '12 Rue de Carthage, 2000 Le Bardo, Tunis',
+  email: 'mohamed.benali@email.tn',
+  telephone: '+216 98 123 456'
+}
+\end{lstlisting}
+
+\subsection{Modèle de Données Compte}
+
+Les comptes bancaires incluent les informations suivantes :
+
+\begin{lstlisting}[language=JavaScript, caption=Structure de données compte]
+{
+  id: 'A001',
+  customerId: 'C001',
+  type: 'Compte Courant',
+  iban: 'TN59 1000 6035 0000 0123 4567 89',
+  balance: 15850.75,
+  currency: 'TND',
+  createdAt: '2023-01-01T00:00:00.000Z',
+  updatedAt: '2024-12-01T12:00:00.000Z'
+}
+\end{lstlisting}
+
+\subsection{Modèle de Transaction}
+
+Les transactions sont enregistrées avec les détails suivants :
+
+\begin{lstlisting}[language=JavaScript, caption=Structure de données transaction]
+{
+  id: 'TRN001',
+  type: 'DÉBIT',
+  date: '2024-11-26T10:00:00.000Z',
+  description: 'Paiement Facture STEG',
+  montant: -120.50
+}
+\end{lstlisting}
+
+\section{Endpoints API}
+
+\subsection{Consultation Client}
+
+\textbf{GET /cbs/customer/:id}
+
+Retourne les informations d'un client avec tous ses comptes associés.
+
+\begin{lstlisting}[language=JSON, caption=Exemple de réponse consultation client]
+{
+  "id": "C001",
+  "prenom": "Mohamed",
+  "nom": "Ben Ali",
+  "adresse": "12 Rue de Carthage, 2000 Le Bardo, Tunis",
+  "email": "mohamed.benali@email.tn",
+  "telephone": "+216 98 123 456",
+  "accounts": [
+    { "id": "A001", "type": "Compte Courant", "balance": 15850.75 },
+    { "id": "A002", "type": "Compte Épargne", "balance": 125000.00 }
+  ]
+}
+\end{lstlisting}
+
+\subsection{Consultation Compte}
+
+\textbf{GET /cbs/account/:id}
+
+Retourne les détails complets d'un compte bancaire.
+
+\subsection{Historique des Transactions}
+
+\textbf{GET /cbs/account/:id/history}
+
+Retourne l'historique complet des transactions d'un compte, trié par date décroissante.
+
+\subsection{Virement entre Comptes}
+
+\textbf{POST /cbs/transfer}
+
+Effectue un virement entre deux comptes avec validation des fonds.
+
+\begin{lstlisting}[language=JSON, caption=Exemple de requête et réponse virement]
+// Requête
+{
+  "from": "A001",
+  "to": "A003",
+  "amount": 500.00,
+  "description": "Payment for services"
+}
+
+// Réponse
+{
+  "message": "Transfer successful",
+  "sourceAccount": { "id": "A001", "balance": 15350.75 },
+  "targetAccount": { "id": "A003", "balance": 7730.50 },
+  "debitTransaction": { 
+    "id": "TRN012", 
+    "type": "DÉBIT", 
+    "montant": -500.00 
+  },
+  "creditTransaction": { 
+    "id": "TRN013", 
+    "type": "CRÉDIT", 
+    "montant": 500.00 
+  }
+}
+\end{lstlisting}
+
+\section{Validation et Gestion d'Erreurs}
+
+Le simulateur implémente plusieurs validations :
+
+\begin{itemize}
+    \item \textbf{Vérification d'existence} : Les comptes et clients doivent exister
+    \item \textbf{Vérification de solde} : Les virements nécessitent un solde suffisant
+    \item \textbf{Validation des champs} : Tous les champs requis doivent être présents
+    \item \textbf{Gestion des erreurs HTTP} : Codes de statut appropriés (400, 404, 500)
+\end{itemize}
+
+\section{Persistance des Données}
+
+Actuellement, les données sont stockées en mémoire. Pour un système de production, il serait nécessaire d'intégrer une base de données (PostgreSQL, MongoDB) avec :
+
+\begin{itemize}
+    \item Transactions ACID pour les opérations bancaires
+    \item Réplication pour la haute disponibilité
+    \item Sauvegarde automatique
+    \item Indexation pour les performances
+\end{itemize}
+
+\chapter{Composant Middleware}
+
+\section{Rôle et Architecture}
+
+Le Middleware agit comme une API Gateway entre le frontend et le CBS Simulator. Ses responsabilités principales incluent :
+
+\begin{itemize}
+    \item Routage des requêtes vers le CBS Simulator
+    \item Traçage distribué avec OpenTelemetry
+    \item Collecte de métriques de performance
+    \item Gestion CORS pour les requêtes cross-origin
+    \item Documentation API avec Swagger
+    \item Logging structuré avec Morgan
+\end{itemize}
+
+\section{Configuration OpenTelemetry}
+
+Le middleware intègre OpenTelemetry pour l'observabilité complète. La configuration est définie dans \texttt{tracing.js} :
+
+\begin{lstlisting}[language=JavaScript, caption=Configuration OpenTelemetry SDK]
+const sdk = new NodeSDK({
+  resource: resource,
+  traceExporter: traceExporter,
+  metricReader: metricReader,
+  instrumentations: [
+    getNodeAutoInstrumentations({
+      '@opentelemetry/instrumentation-fs': {
+        enabled: false,
+      },
+    }),
+  ],
+});
+\end{lstlisting}
+
+\subsection{Export OTLP}
+
+Les traces et métriques sont exportées vers ELK Stack via OTLP HTTP :
+
+\begin{lstlisting}[language=JavaScript, caption=Configuration exporteur OTLP]
+const traceExporter = new OTLPTraceExporter({
+  url: "http://192.168.72.129:8080/v1/traces",
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+\end{lstlisting}
+
+\subsection{Attributs de Span}
+
+Chaque requête CBS crée un span avec des attributs personnalisés :
+
+\begin{lstlisting}[language=JavaScript, caption=Création de span avec attributs]
+const span = tracer.startSpan('cbs-request', {
+  attributes: {
+    'cbs.method': 'getCustomer',
+    'cbs.status': response.status,
+    'error': false
+  }
+});
+\end{lstlisting}
+
+\section{Intercepteurs Axios}
+
+Le middleware utilise des intercepteurs Axios pour mesurer les temps de réponse :
+
+\begin{lstlisting}[language=JavaScript, caption=Intercepteurs Axios pour mesure de performance]
+cbsClient.interceptors.request.use(config => {
+  config.headers['x-request-start-time'] = Date.now();
+  return config;
+});
+
+cbsClient.interceptors.response.use(response => {
+  const startTime = response.config.headers['x-request-start-time'];
+  response.headers['x-response-time'] = Date.now() - startTime;
+  return response;
+});
+\end{lstlisting}
+
+\section{Logging avec Morgan}
+
+Morgan est configuré avec des tokens personnalisés pour le logging détaillé :
+
+\begin{lstlisting}[language=JavaScript, caption=Configuration Morgan avec tokens personnalisés]
+morgan.token('cbs-response-time', (req, res) => {
+  const time = res.getHeader('X-CBS-Response-Time');
+  return time ? `${time}ms` : '-';
+});
+
+morgan.token('traceid', (req, res) => {
+  const span = api.trace.getSpan(api.context.active());
+  return span ? span.spanContext().traceId : '-';
+});
+\end{lstlisting}
+
+Le format de log inclut :
+\begin{itemize}
+    \item Date et heure de la requête
+    \item Méthode HTTP et URL
+    \item Code de statut de réponse
+    \item Trace ID et Span ID OpenTelemetry
+    \item Statut CBS et temps de réponse
+\end{itemize}
+
+\section{Documentation Swagger}
+
+Le middleware expose une documentation API interactive via Swagger UI à l'endpoint \texttt{/api-docs}. La configuration utilise swagger-jsdoc pour générer la documentation à partir de commentaires JSDoc :
+
+\begin{lstlisting}[language=JavaScript, caption=Exemple de documentation Swagger]
+/**
+ * @swagger
+ * /customers/{id}:
+ *   get:
+ *     summary: Retrieves customer details
+ *     tags: [Customers]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Customer details
+ */
+\end{lstlisting}
+
+\section{Endpoints de Monitoring}
+
+\subsection{Health Check}
+
+\textbf{GET /health}
+
+Retourne le statut de santé du service :
+
+\begin{lstlisting}[language=JSON, caption=Réponse health check]
+{
+  "status": "OK",
+  "version": "1.0.0",
+  "uptime": 3600.5
+}
+\end{lstlisting}
+
+\subsection{Métriques}
+
+\textbf{GET /metrics}
+
+Retourne les métriques de performance du service :
+
+\begin{lstlisting}[language=JSON, caption=Réponse métriques]
+{
+  "uptime": 3600.5,
+  "memory": {
+    "rss": 50331648,
+    "heapTotal": 29360128,
+    "heapUsed": 20971520,
+    "external": 1638400
+  },
+  "cpu": {
+    "user": 125000,
+    "system": 50000
+  }
+}
+\end{lstlisting}
+
+\chapter{Composant Dashboard}
+
+\section{Architecture Frontend}
+
+Le Dashboard est une application React monolithique organisée en composants modulaires. La structure suit les principes de composition React :
+
+\begin{itemize}
+    \item \textbf{Composants réutilisables} : Formulaires, tableaux, graphiques
+    \item \textbf{Services API} : Couche d'abstraction pour les appels HTTP
+    \item \textbf{Gestion d'état} : useState et useEffect pour l'état local
+    \item \textbf{Styling} : Ant Design pour le design system
+\end{itemize}
+
+\section{Composants Principaux}
+
+\subsection{SupervisionDashboard}
+
+Le composant de supervision affiche les métriques en temps réel :
+
+\begin{itemize}
+    \item Statut du service (OK/Erreur)
+    \item Version et uptime
+    \item Utilisation mémoire avec barre de progression
+    \item Utilisation CPU
+    \item Graphique de performance en temps réel
+\end{itemize}
+
+Le composant utilise \texttt{useEffect} avec un intervalle de 30 secondes pour mettre à jour les données :
+
+\begin{lstlisting}[language=JavaScript, caption=Composant SupervisionDashboard avec mise à jour automatique]
+useEffect(() => {
+  const fetchDashboardData = async () => {
+    const [metricsData, healthData] = await Promise.all([
+      cbsAPI.getMetrics(),
+      cbsAPI.getHealth()
+    ]);
+    setMetrics(metricsData);
+    setHealth(healthData);
+  };
+  
+  fetchDashboardData();
+  const interval = setInterval(fetchDashboardData, 30000);
+  return () => clearInterval(interval);
+}, []);
+\end{lstlisting}
+
+\subsection{TransferForm}
+
+Le formulaire de virement permet d'effectuer des transferts entre comptes :
+
+\begin{itemize}
+    \item Validation des champs (compte source, compte destination, montant)
+    \item Affichage des erreurs de validation
+    \item Messages de succès/erreur
+    \item Mise à jour automatique après virement réussi
+\end{itemize}
+
+\subsection{AccountConsultation}
+
+Le composant de consultation de compte permet de rechercher un compte par ID et affiche :
+
+\begin{itemize}
+    \item Informations du compte (IBAN, type, solde)
+    \item Informations du client propriétaire
+    \item Historique des transactions récentes
+\end{itemize}
+
+\subsection{CustomerConsultation}
+
+Le composant de consultation client affiche :
+
+\begin{itemize}
+    \item Informations personnelles du client
+    \item Liste de tous les comptes associés
+    \item Solde total de tous les comptes
+\end{itemize}
+
+\subsection{TransactionHistory}
+
+Le composant d'historique des transactions permet de :
+
+\begin{itemize}
+    \item Filtrer les transactions par compte
+    \item Afficher les transactions par type (CRÉDIT/DÉBIT)
+    \item Trier par date
+    \item Visualiser les montants avec codes couleur
+\end{itemize}
+
+\section{Service API}
+
+Le service API (\texttt{services/api.js}) centralise tous les appels HTTP vers le middleware :
+
+\begin{lstlisting}[language=JavaScript, caption=Service API centralisé]
+import axios from 'axios';
+
+const API_BASE_URL = process.env.REACT_APP_API_URL || 
+  'http://localhost:3000';
+
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 10000,
+});
+
+export const cbsAPI = {
+  getHealth: () => api.get('/health'),
+  getMetrics: () => api.get('/metrics'),
+  getCustomer: (id) => api.get(`/customers/${id}`),
+  getAccount: (id) => api.get(`/accounts/${id}`),
+  getAccountHistory: (id) => api.get(`/accounts/${id}/history`),
+  transfer: (data) => api.post('/transfer', data),
+};
+\end{lstlisting}
+
+\section{Visualisation des Données}
+
+Recharts est utilisé pour créer des graphiques interactifs :
+
+\begin{lstlisting}[language=JavaScript, caption=Graphique de performance avec Recharts]
+<LineChart data={performanceData}>
+  <CartesianGrid strokeDasharray="3 3" />
+  <XAxis dataKey="time" />
+  <YAxis />
+  <Tooltip />
+  <Line 
+    type="monotone" 
+    dataKey="memory" 
+    stroke="#1890ff" 
+    name="Mémoire (MB)"
+  />
+</LineChart>
+\end{lstlisting}
+
+Les données sont limitées aux 20 derniers points pour maintenir les performances.
+
+\chapter{Observabilité et Monitoring}
+
+\section{Traçage Distribué avec OpenTelemetry}
+
+OpenTelemetry permet de suivre une requête à travers tous les services du système. Chaque requête génère une trace unique avec plusieurs spans :
+
+\begin{itemize}
+    \item \textbf{Trace ID} : Identifiant unique pour toute la requête
+    \item \textbf{Span ID} : Identifiant pour chaque opération
+    \item \textbf{Parent-Child Relationships} : Hiérarchie des spans
+    \item \textbf{Attributs} : Métadonnées sur chaque span
+    \item \textbf{Events} : Événements temporels dans un span
+\end{itemize}
+
+\section{Export des Traces}
+
+Les traces sont exportées vers ELK Stack (Elasticsearch, Logstash, Kibana) via le protocole OTLP HTTP. Cette architecture permet :
+
+\begin{itemize}
+    \item Stockage centralisé des traces
+    \item Recherche et analyse avancées
+    \item Visualisation dans Kibana
+    \item Alertes basées sur les métriques
+\end{itemize}
+
+\section{Métriques Collectées}
+
+Le système collecte plusieurs types de métriques :
+
+\subsection{Métriques Système}
+
+\begin{itemize}
+    \item \textbf{Uptime} : Temps de fonctionnement du service
+    \item \textbf{Memory Usage} : Utilisation mémoire (RSS, Heap)
+    \item \textbf{CPU Usage} : Utilisation processeur (user, system)
+\end{itemize}
+
+\subsection{Métriques Application}
+
+\begin{itemize}
+    \item \textbf{Response Time} : Temps de réponse des requêtes CBS
+    \item \textbf{Request Count} : Nombre de requêtes par endpoint
+    \item \textbf{Error Rate} : Taux d'erreur par type
+    \item \textbf{Throughput} : Nombre de requêtes par seconde
+\end{itemize}
+
+\section{Dashboard de Monitoring}
+
+Le dashboard React affiche les métriques en temps réel avec :
+
+\begin{itemize}
+    \item \textbf{Statistiques} : Valeurs clés avec indicateurs visuels
+    \item \textbf{Graphiques} : Évolution temporelle des métriques
+    \item \textbf{Alertes visuelles} : Codes couleur pour les seuils
+    \item \textbf{Auto-refresh} : Mise à jour automatique toutes les 30 secondes
+\end{itemize}
+
+\section{Logging Structuré}
+
+Les logs sont structurés avec le format suivant :
+
+\begin{verbatim}
+[01/Dec/2024:10:15:30 +0000] GET /customers/C001 200 | 
+trace_id=1234567890abcdef span_id=abcdef1234567890 | 
+CBS Status: 200 | CBS Time: 45ms
+\end{verbatim}
+
+Ce format permet :
+\begin{itemize}
+    \item Corrélation avec les traces OpenTelemetry
+    \item Analyse des performances
+    \item Dépannage des problèmes
+    \item Audit des opérations
+\end{itemize}
+
+\chapter{Déploiement et Infrastructure}
+
+\section{Containerisation avec Docker}
+
+\subsection{Structure des Dockerfiles}
+
+Chaque service possède son propre Dockerfile optimisé :
+
+\begin{lstlisting}[language=Dockerfile, caption=Exemple de Dockerfile optimisé]
+FROM node:18-slim
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci --only=production
+
+COPY . .
+
+USER node
+
+EXPOSE 4000
+
+HEALTHCHECK --interval=30s --timeout=10s \
+  CMD curl -f http://localhost:4000/health || exit 1
+
+CMD ["node", "index.js"]
+\end{lstlisting}
+
+\subsection{Optimisations}
+
+Les Dockerfiles sont optimisés pour :
+
+\begin{itemize}
+    \item \textbf{Taille réduite} : Utilisation d'images slim
+    \item \textbf{Sécurité} : Exécution en tant qu'utilisateur non-root
+    \item \textbf{Cache} : Ordre des commandes pour maximiser le cache
+    \item \textbf{Production} : Installation uniquement des dépendances de production
+\end{itemize}
+
+\section{Orchestration avec Docker Compose}
+
+Docker Compose permet de déployer tous les services localement :
+
+\begin{lstlisting}[language=yaml, caption=Configuration Docker Compose]
+version: '3.8'
+
+services:
+  cbs-simulator:
+    build:
+      context: ./cbs-simulator
+    ports:
+      - "4000:4000"
+    networks:
+      - cbs-net
+
+networks:
+  cbs-net:
+    driver: bridge
+\end{lstlisting}
+
+\section{Déploiement Kubernetes}
+
+\subsection{Architecture du Cluster}
+
+Le système est déployé sur un cluster Kubernetes avec :
+
+\begin{itemize}
+    \item \textbf{Master Node} : 192.168.72.128
+    \item \textbf{Worker Node 1} : 192.168.72.129
+    \item \textbf{Worker Node 2} : 192.168.72.130
+\end{itemize}
+
+\subsection{Namespace}
+
+Tous les services sont déployés dans le namespace \texttt{cbs-system} pour l'isolation :
+
+\begin{lstlisting}[language=yaml, caption=Configuration namespace Kubernetes]
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cbs-system
+  labels:
+    name: cbs-system
+\end{lstlisting}
+
+\subsection{Déploiements}
+
+Chaque service est déployé avec :
+
+\begin{itemize}
+    \item \textbf{Replicas} : 2 instances pour la haute disponibilité
+    \item \textbf{Resources} : Limites CPU et mémoire
+    \item \textbf{Health Checks} : Readiness et liveness probes
+    \item \textbf{Environment Variables} : Configuration via variables d'environnement
+\end{itemize}
+
+\begin{lstlisting}[language=yaml, caption=Exemple de déploiement Kubernetes]
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: middleware
+  namespace: cbs-system
+spec:
+  replicas: 2
+  template:
+    spec:
+      containers:
+      - name: middleware
+        image: ammariamine/middleware:latest
+        ports:
+        - containerPort: 3000
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "150m"
+          limits:
+            memory: "512Mi"
+            cpu: "400m"
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 15
+\end{lstlisting}
+
+\subsection{Services}
+
+Deux types de services Kubernetes sont utilisés :
+
+\begin{enumerate}
+    \item \textbf{ClusterIP} : Communication interne entre services
+    \item \textbf{NodePort} : Accès externe depuis l'extérieur du cluster
+\end{enumerate}
+
+\begin{lstlisting}[language=yaml, caption=Configuration services Kubernetes]
+apiVersion: v1
+kind: Service
+metadata:
+  name: middleware-service
+spec:
+  type: ClusterIP
+  selector:
+    app: middleware
+  ports:
+  - port: 3000
+    targetPort: 3000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: middleware-nodeport
+spec:
+  type: NodePort
+  selector:
+    app: middleware
+  ports:
+  - port: 3000
+    targetPort: 3000
+    nodePort: 30003
+\end{lstlisting}
+
+\subsection{Health Checks}
+
+Les health checks garantissent que seuls les pods sains reçoivent du trafic :
+
+\begin{itemize}
+    \item \textbf{Readiness Probe} : Vérifie si le pod est prêt à recevoir du trafic
+    \item \textbf{Liveness Probe} : Vérifie si le pod est toujours en vie
+\end{itemize}
+
+\chapter{Pipeline CI/CD avec Jenkins}
+
+\section{Architecture du Pipeline}
+
+Le pipeline Jenkins est organisé en plusieurs stages :
+
+\begin{enumerate}
+    \item \textbf{Checkout Code} : Récupération du code source
+    \item \textbf{Code Quality Analysis} : Analyse avec SonarQube
+    \item \textbf{Dependency Audit} : Vérification des vulnérabilités npm
+    \item \textbf{Docker Build \& Push} : Construction et publication des images
+    \item \textbf{Image Security Scan} : Scan de sécurité avec Trivy
+    \item \textbf{Deployment} : Déploiement sur Kubernetes
+    \item \textbf{Health Verification} : Vérification de la santé des services
+    \item \textbf{Security Testing} : Tests de sécurité avec OWASP ZAP
+\end{enumerate}
+
+\section{Analyse de Qualité de Code}
+
+SonarQube analyse le code pour détecter :
+
+\begin{itemize}
+    \item Code smells
+    \item Bugs potentiels
+    \item Vulnérabilités de sécurité
+    \item Duplication de code
+    \item Complexité cyclomatique
+    \item Couverture de tests
+\end{itemize}
+
+\section{Sécurité}
+
+\subsection{Audit des Dépendances}
+
+\textbf{npm audit} vérifie les vulnérabilités dans les dépendances npm :
+
+\begin{lstlisting}[language=bash, caption=Commande npm audit]
+npm audit --audit-level=high
+\end{lstlisting}
+
+\subsection{Scan d'Images Docker}
+
+Trivy scanne les images Docker pour détecter :
+
+\begin{itemize}
+    \item Vulnérabilités dans les packages système
+    \item Vulnérabilités dans les dépendances applicatives
+    \item Problèmes de configuration
+    \item Secrets exposés
+\end{itemize}
+
+\subsection{Tests de Sécurité Dynamiques}
+
+OWASP ZAP effectue des tests de sécurité dynamiques :
+
+\begin{itemize}
+    \item Spider scan : Découverte automatique des endpoints
+    \item Active scan : Tests d'injection, XSS, CSRF, etc.
+    \item Rapport HTML : Génération d'un rapport détaillé
+\end{itemize}
+
+\section{Déploiement Automatique}
+
+Le pipeline déploie automatiquement sur Kubernetes après les validations :
+
+\begin{lstlisting}[language=groovy, caption=Étapes de déploiement Jenkins]
+sh "kubectl apply -f kubernetes/deploy-all.yaml"
+sh "kubectl rollout status deployment/middleware -n cbs-system"
+\end{lstlisting}
+
+\section{Artifacts}
+
+Le pipeline archive les rapports générés :
+
+\begin{itemize}
+    \item Rapports npm audit
+    \item Rapports Trivy
+    \item Rapport OWASP ZAP
+    \item Logs de déploiement
+\end{itemize}
+
+\chapter{Sécurité}
+
+\section{Considérations de Sécurité}
+
+\subsection{CORS}
+
+Le middleware configure CORS pour permettre les requêtes cross-origin :
+
+\begin{lstlisting}[language=JavaScript, caption=Configuration CORS]
+app.use(cors({
+  origin: true,
+  credentials: true
+}));
+\end{lstlisting}
+
+\textbf{Note} : En production, l'origine devrait être restreinte à des domaines spécifiques.
+
+\subsection{Validation des Entrées}
+
+Toutes les entrées utilisateur sont validées :
+
+\begin{itemize}
+    \item Format des IDs de compte
+    \item Montants numériques positifs
+    \item Champs requis présents
+    \item Types de données corrects
+\end{itemize}
+
+\subsection{Gestion des Erreurs}
+
+Les erreurs sont gérées de manière sécurisée :
+
+\begin{itemize}
+    \item Messages d'erreur génériques pour les clients
+    \item Logs détaillés côté serveur
+    \item Pas d'exposition d'informations sensibles
+    \item Codes de statut HTTP appropriés
+\end{itemize}
+
+\section{Recommandations pour la Production}
+
+Pour un déploiement en production, les améliorations suivantes sont recommandées :
+
+\begin{enumerate}
+    \item \textbf{Authentification} : Implémenter JWT ou OAuth2
+    \item \textbf{HTTPS} : Utiliser TLS pour toutes les communications
+    \item \textbf{Rate Limiting} : Limiter le nombre de requêtes par IP
+    \item \textbf{Secrets Management} : Utiliser Kubernetes Secrets ou Vault
+    \item \textbf{Network Policies} : Restreindre la communication entre pods
+    \item \textbf{Encryption} : Chiffrer les données sensibles au repos
+    \item \textbf{Audit Logging} : Enregistrer toutes les opérations critiques
+    \item \textbf{Penetration Testing} : Tests de pénétration réguliers
+\end{enumerate}
+
+\chapter{Tests et Validation}
+
+\section{Scénarios de Test}
+
+\subsection{Tests de Santé}
+
+\begin{itemize}
+    \item \textbf{Health Check} : Vérification que tous les services répondent
+    \item \textbf{Metrics Endpoint} : Vérification de la collecte de métriques
+\end{itemize}
+
+\subsection{Tests Fonctionnels}
+
+\begin{itemize}
+    \item \textbf{Consultation Client} : Récupération des données client valides
+    \item \textbf{Consultation Compte} : Récupération des détails de compte
+    \item \textbf{Historique Transactions} : Récupération de l'historique
+    \item \textbf{Virement Réussi} : Virement avec solde suffisant
+    \item \textbf{Virement Échoué} : Virement avec solde insuffisant
+\end{itemize}
+
+\subsection{Tests d'Erreur}
+
+\begin{itemize}
+    \item \textbf{Client Inexistant} : Retourne 404
+    \item \textbf{Compte Inexistant} : Retourne 404
+    \item \textbf{Données Manquantes} : Retourne 400
+    \item \textbf{Montant Invalide} : Retourne 400
+\end{itemize}
+
+\section{Validation des Performances}
+
+Les performances sont validées via :
+
+\begin{itemize}
+    \item Temps de réponse des endpoints
+    \item Utilisation des ressources (CPU, mémoire)
+    \item Throughput (requêtes par seconde)
+    \item Latence du réseau entre services
+\end{itemize}
+
+\chapter{Conclusion et Perspectives}
+
+\section{Résumé des Réalisations}
+
+Ce projet a permis de développer un système bancaire central complet avec :
+
+\begin{itemize}
+    \item Architecture microservices moderne et scalable
+    \item Observabilité complète avec OpenTelemetry
+    \item Interface utilisateur moderne et réactive
+    \item Déploiement automatisé avec CI/CD
+    \item Infrastructure cloud-native avec Kubernetes
+\end{itemize}
+
+\section{Points Forts}
+
+Les principaux points forts du système incluent :
+
+\begin{enumerate}
+    \item \textbf{Modularité} : Services indépendants et découplés
+    \item \textbf{Observabilité} : Traçage distribué et métriques en temps réel
+    \item \textbf{Scalabilité} : Architecture prête pour la mise à l'échelle horizontale
+    \item \textbf{Maintenabilité} : Code structuré et bien documenté
+    \item \textbf{DevOps} : Pipeline CI/CD complet et automatisé
+\end{enumerate}
+
+\section{Perspectives d'Amélioration}
+
+Plusieurs améliorations peuvent être envisagées pour la production :
+
+\subsection{Fonctionnalités}
+
+\begin{itemize}
+    \item Authentification et autorisation (JWT, OAuth2)
+    \item Gestion des rôles et permissions
+    \item Notifications en temps réel (WebSocket)
+    \item Export de rapports (PDF, Excel)
+    \item Support multi-devises
+    \item Historique de versioning des transactions
+\end{itemize}
+
+\subsection{Infrastructure}
+
+\begin{itemize}
+    \item Base de données persistante (PostgreSQL)
+    \item Cache Redis pour les performances
+    \item Message queue (RabbitMQ, Kafka) pour les transactions asynchrones
+    \item Load balancer (NGINX, Traefik)
+    \item CDN pour les assets statiques
+    \item Backup automatique des données
+\end{itemize}
+
+\subsection{Observabilité}
+
+\begin{itemize}
+    \item Intégration Prometheus pour les métriques
+    \item Grafana pour les dashboards avancés
+    \item Alerting automatique (PagerDuty, Slack)
+    \item Log aggregation centralisée (ELK Stack complet)
+    \item APM (Application Performance Monitoring)
+\end{itemize}
+
+\subsection{Sécurité}
+
+\begin{itemize}
+    \item WAF (Web Application Firewall)
+    \item DDoS protection
+    \item Chiffrement end-to-end
+    \item Compliance réglementaire (PCI-DSS pour les paiements)
+    \item Audit trail complet
+\end{itemize}
+
+\section{Conclusion}
+
+Ce système bancaire central démontre l'application réussie des principes d'architecture microservices modernes, combinée à une observabilité complète et un déploiement automatisé. L'architecture choisie offre une base solide pour une évolution future vers un système de production complet.
+
+Les technologies utilisées (Node.js, React, Kubernetes, OpenTelemetry) représentent l'état de l'art dans le développement d'applications cloud-native, et le système est prêt à être étendu avec les fonctionnalités supplémentaires nécessaires pour un environnement de production réel.
+
+\appendix
+
+\chapter{Annexes}
+
+\section{Structure du Projet}
+
+\begin{verbatim}
+CBS-Core-Banking-System-Intechgeeks/
+├── cbs-simulator/
+│   ├── Dockerfile
+│   ├── index.js
+│   └── package.json
+├── dashboard/
+│   ├── Dockerfile
+│   ├── src/
+│   │   ├── components/
+│   │   ├── services/
+│   │   └── Dashboard.js
+│   └── package.json
+├── middleware/
+│   ├── Dockerfile
+│   ├── index.js
+│   ├── tracing.js
+│   └── package.json
+├── kubernetes/
+│   ├── deploy-all.yaml
+│   └── namespace.yaml
+├── docker-compose.yml
+├── Jenkinsfile
+└── package.json
+\end{verbatim}
+
+\section{Ports et Endpoints}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Service} & \textbf{Port Interne} & \textbf{Port Externe (NodePort)} \\
+\hline
+Dashboard & 80 & 30004 \\
+Middleware & 3000 & 30003 \\
+CBS Simulator & 4000 & 30005 \\
+\hline
+\end{tabular}
+\caption{Configuration des ports}
+\end{table}
+
+\section{Ressources Kubernetes}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Service} & \textbf{Requests} & \textbf{Limits} \\
+\hline
+CBS Simulator & 256Mi / 100m & 512Mi / 300m \\
+Middleware & 256Mi / 150m & 512Mi / 400m \\
+Dashboard & 128Mi / 100m & 256Mi / 200m \\
+\hline
+\end{tabular}
+\caption{Allocation des ressources}
+\end{table}
+
+\section{Extraits de Code Significatifs}
+
+\subsection{Configuration OpenTelemetry Complète}
+
+\begin{lstlisting}[language=JavaScript, caption=Configuration complète OpenTelemetry]
+const opentelemetry = require('@opentelemetry/api');
+const { NodeSDK } = require('@opentelemetry/sdk-node');
+const { getNodeAutoInstrumentations } = require('@opentelemetry/auto-instrumentations-node');
+const { OTLPTraceExporter } = require('@opentelemetry/exporter-trace-otlp-http');
+const { Resource } = require('@opentelemetry/resources');
+const { SemanticResourceAttributes } = require('@opentelemetry/semantic-conventions');
+
+const traceExporter = new OTLPTraceExporter({
+  url: "http://192.168.72.129:8080/v1/traces",
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+const resource = new Resource({
+  [SemanticResourceAttributes.SERVICE_NAME]: 'cbs-middleware',
+  [SemanticResourceAttributes.SERVICE_VERSION]: '1.0.0',
+  [SemanticResourceAttributes.SERVICE_NAMESPACE]: 'banking',
+});
+
+const sdk = new NodeSDK({
+  resource: resource,
+  traceExporter: traceExporter,
+  instrumentations: [
+    getNodeAutoInstrumentations({
+      '@opentelemetry/instrumentation-fs': {
+        enabled: false,
+      },
+    }),
+  ],
+});
+
+sdk.start();
+\end{lstlisting}
+
+\subsection{Endpoint avec Tracing Distribué}
+
+\begin{lstlisting}[language=JavaScript, caption=Endpoint avec tracing complet]
+app.get('/customers/:id', async (req, res) => {
+    const customerId = req.params.id;
+    const tracer = api.trace.getTracer('middleware-tracer');
+    const span = tracer.startSpan('cbs-request', { 
+        attributes: { 'cbs.method': 'getCustomer' } 
+    });
+
+    try {
+        const response = await cbsClient.get(`/cbs/customer/${customerId}`);
+        res.status(response.status).json(response.data);
+        span.setAttributes({ 'cbs.status': response.status });
+    } catch (error) {
+        const status = error.response ? error.response.status : 500;
+        res.status(status).json({ message: error.message });
+        span.setAttributes({ 'cbs.status': status, 'error': true });
+    } finally {
+        span.end();
+    }
+});
+\end{lstlisting}
+
+\section{Bibliographie}
+
+\subsection{Références Académiques}
+
+\begin{itemize}
+    \item Bass, L., Weber, I., \& Zhu, L. (2015). \textit{DevOps: A Software Architect's Perspective}. Addison-Wesley Professional.
+    \item Kim, G., Humble, J., Debois, P., \& Willis, J. (2016). \textit{The DevOps Handbook: How to Create World-Class Agility, Reliability, and Security in Technology Organizations}. IT Revolution Press.
+    \item Newman, Sam. (2021). \textit{Building Microservices: Designing Fine-Grained Systems}. O'Reilly Media.
+\end{itemize}
+
+\subsection{Références Techniques}
+
+\begin{itemize}
+    \item OpenTelemetry Documentation. (2024). \textit{OpenTelemetry: Observability for Cloud-Native Software}. \url{https://opentelemetry.io/docs/}
+    \item Kubernetes Documentation. (2024). \textit{Kubernetes: Production-Grade Container Orchestration}. \url{https://kubernetes.io/docs/}
+    \item Jenkins Documentation. (2024). \textit{Jenkins: The Leading Open Source Automation Server}. \url{https://www.jenkins.io/doc/}
+    \item Docker Documentation. (2024). \textit{Docker: Accelerated Container Application Development}. \url{https://docs.docker.com/}
+    \item React Documentation. (2024). \textit{React: A JavaScript library for building user interfaces}. \url{https://react.dev/}
+    \item Express.js Documentation. (2024). \textit{Express.js: Fast, unopinionated, minimalist web framework}. \url{https://expressjs.com/}
+\end{itemize}
+
+\subsection{Standards et Bonnes Pratiques}
+
+\begin{itemize}
+    \item OWASP Foundation. (2024). \textit{OWASP Top 10 - 2021: The Ten Most Critical Web Application Security Risks}. \url{https://owasp.org/Top10/}
+    \item NIST. (2018). \textit{Framework for Improving Critical Infrastructure Cybersecurity, Version 1.1}. \url{https://www.nist.gov/cyberframework}
+    \item ISO/IEC 27001:2013. (2013). \textit{Information technology — Security techniques — Information security management systems — Requirements}.
+\end{itemize}
+
+\end{document}
