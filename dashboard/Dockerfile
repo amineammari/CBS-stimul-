@@ -9,12 +9,16 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install ALL dependencies (including devDependencies needed for build)
+# Use npm install instead of npm ci to avoid old lockfile metadata issues
 # Configure npm for better caching and network resilience
 RUN npm config set registry https://registry.npmjs.org/ && \
-    npm config set fetch-retry-mintimeout 20000 && \
-    npm config set fetch-retry-maxtimeout 120000 && \
-    npm config set fetch-retries 5 && \
-    npm ci --ignore-scripts && \
+    npm config set fetch-retry-mintimeout 30000 && \
+    npm config set fetch-retry-maxtimeout 300000 && \
+    npm config set fetch-retries 10 && \
+    npm config set fetch-timeout 300000 && \
+    npm config set maxsockets 1 && \
+    npm config set prefer-offline true && \
+    npm install --ignore-scripts --legacy-peer-deps && \
     npm cache clean --force
 
 # Copy source code (this layer will be cached if only code changes)
