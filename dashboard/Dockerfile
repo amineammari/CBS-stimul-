@@ -7,6 +7,10 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
+# Ensure npm matches the version used to generate the lockfile
+# (some lockfile features / package aliasing require npm 11+)
+RUN npm install -g npm@11.4.2
+
 # Install dependencies with security improvements and network resilience
 # Ensure devDependencies are available during the build (for build tools)
 RUN npm config set registry https://registry.npmjs.org/ && \
