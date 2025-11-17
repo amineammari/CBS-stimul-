@@ -12,7 +12,7 @@ RUN npm config set registry https://registry.npmjs.org/ && \
     npm config set fetch-retry-mintimeout 20000 && \
     npm config set fetch-retry-maxtimeout 120000 && \
     npm config set fetch-retries 5 && \
-    npm ci --only=production --ignore-scripts && \
+    npm ci --ignore-scripts && \
     npm cache clean --force
 
 # Copy all app files
