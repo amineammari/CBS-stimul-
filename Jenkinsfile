@@ -9,7 +9,7 @@ pipeline {
         K8S_NAMESPACE = 'cbs-system'
         KUBECONFIG = '/var/lib/jenkins/.kube/config'
 
-        // Tool Containers
+        // Tool Containers (master IP where docker-compose runs)
         SONAR_HOST = 'http://192.168.72.162:9000'
         ZAP_HOST = '192.168.72.162'
         ZAP_PORT = '8090'
@@ -42,12 +42,12 @@ pipeline {
                 withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
                     sh """
                         docker run --rm \
-                            -v \$(pwd):/src \
-                            sonarsource/sonar-scanner-cli \
-                            -Dsonar.projectKey=CBS-stimul \
-                            -Dsonar.sources=/src \
-                            -Dsonar.host.url=${SONAR_HOST} \
-                            -Dsonar.login=${SONAR_TOKEN}
+                          -v \$(pwd):/src \
+                          sonarsource/sonar-scanner-cli \
+                          -Dsonar.projectKey=CBS-stimul \
+                          -Dsonar.sources=/src \
+                          -Dsonar.host.url=${SONAR_HOST} \
+                          -Dsonar.login=${SONAR_TOKEN}
                     """
                 }
             }
@@ -60,6 +60,7 @@ pipeline {
                     def apps = ['cbs-simulator', 'middleware', 'dashboard']
                     apps.each { app ->
                         dir(app) {
+                            echo "🔍 Running npm install + audit for ${app}..."
                             sh "npm install --legacy-peer-deps --no-fund --no-audit || true"
                             sh "npm audit --json > ../${app}-npm-audit.json || true"
                         }
@@ -75,18 +76,18 @@ pipeline {
                     script {
                         def apps = ['cbs-simulator', 'middleware', 'dashboard']
                         apps.each { app ->
-                            
+                            echo "Building ${app} image..."
                             if (app == 'dashboard') {
                                 sh """
                                     docker build \
-                                        -t ${DOCKER_REGISTRY}/${app}:latest \
-                                        --build-arg REACT_APP_API_URL=http://${MASTER_IP}:30003 \
-                                        ./${app}
+                                      -t ${DOCKER_REGISTRY}/${app}:latest \
+                                      --build-arg REACT_APP_API_URL=http://${MASTER_IP}:30003 \
+                                      ./${app}
                                 """
                             } else {
                                 sh "docker build -t ${DOCKER_REGISTRY}/${app}:latest ./${app}"
                             }
-
+                            echo "Pushing ${app} to registry..."
                             sh "docker push ${DOCKER_REGISTRY}/${app}:latest"
                         }
                     }
@@ -94,19 +95,29 @@ pipeline {
             }
         }
 
-        /* ---------------- TRIVY via DOCKER ---------------- */
-        stage('Image Security Scan (Trivy)') {
+        /* ---------------- TRIVY via DOCKER (HTML REPORT) ---------------- */
+        stage('Image Security Scan (Trivy - HTML)') {
             steps {
                 script {
                     def apps = ['cbs-simulator', 'middleware', 'dashboard']
                     apps.each { app ->
+                        echo "📄 Generating HTML vulnerability report for ${app}..."
+                        // Mount workspace into /reports so generated HTML lands in workspace
                         sh """
                             docker run --rm \
                                 -v /var/run/docker.sock:/var/run/docker.sock \
-                                aquasec/trivy image \
-                                --severity HIGH,CRITICAL \
-                                ${DOCKER_REGISTRY}/${app}:latest \
-                                > ${app}-trivy-report.txt || true
+                                -v \$(pwd):/reports \
+                                aquasec/trivy:latest image \
+                                --format template \
+                                --template "@/contrib/html.tpl" \
+                                -o /reports/${app}-trivy-report.html \
+                                ${DOCKER_REGISTRY}/${app}:latest || true
+                        """
+                        // Fallback: also produce a plain text table if HTML failed (keeps pipeline robust)
+                        sh """
+                          if [ ! -f ${app}-trivy-report.html ]; then
+                              docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v \$(pwd):/reports aquasec/trivy:latest image --format table --no-progress ${DOCKER_REGISTRY}/${app}:latest > ${app}-trivy-report.txt || true
+                          fi
                         """
                     }
                 }
@@ -117,12 +128,17 @@ pipeline {
         stage('Deployment to Test Env') {
             steps {
                 script {
+                    // Ensure namespace exists
                     sh "kubectl create namespace ${K8S_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -"
+                    // Remove older deployments if exist
                     sh "kubectl delete deployment cbs-simulator middleware dashboard -n ${K8S_NAMESPACE} --ignore-not-found=true"
-                    sh "sleep 10"
+                    sleep 10
+                    // Apply manifests
                     sh "kubectl apply -f kubernetes/deploy-all.yaml"
 
+                    // Wait for rollouts
                     ['cbs-simulator','middleware','dashboard'].each { app ->
+                        echo "Waiting rollout for ${app}..."
                         sh "kubectl rollout status deployment/${app} -n ${K8S_NAMESPACE} --timeout=300s"
                     }
                 }
@@ -134,9 +150,10 @@ pipeline {
             steps {
                 script {
                     sh """
-                        curl -f http://${MASTER_IP}:30003/health || true
-                        curl -f http://${MASTER_IP}:30004 || true
-                        curl -f http://${MASTER_IP}:30005 || true
+                        echo "Checking HTTP endpoints..."
+                        curl -f http://${MASTER_IP}:30003/health || echo "Middleware health check failed"
+                        curl -f http://${MASTER_IP}:30004 || echo "Dashboard not reachable"
+                        curl -f http://${MASTER_IP}:30005 || echo "Simulator not reachable"
                     """
                 }
             }
@@ -146,17 +163,22 @@ pipeline {
         stage('Dynamic Security Testing (OWASP ZAP)') {
             steps {
                 script {
-                    echo "=== Starting OWASP ZAP Spider ==="
+                    echo "=== Starting OWASP ZAP Spider (via running zap daemon) ==="
+                    withCredentials([string(credentialsId: 'owasp-zap-api-key', variable: 'ZAP_API_KEY')]) {
+                        sh """
+                            # Spider the dashboard URL
+                            curl "http://${ZAP_HOST}:${ZAP_PORT}/JSON/spider/action/scan/?apikey=${ZAP_API_KEY}&url=http://${MASTER_IP}:30004" || true
+                            sleep 30
 
-                    sh """
-                        curl "http://${ZAP_HOST}:${ZAP_PORT}/JSON/spider/action/scan/?url=http://${MASTER_IP}:30004" || true
-                        sleep 30
+                            # Active scan (may be slow)
+                            curl "http://${ZAP_HOST}:${ZAP_PORT}/JSON/ascan/action/scan/?apikey=${ZAP_API_KEY}&url=http://${MASTER_IP}:30004" || true
+                            # wait longer for active scan to progress (adjust as needed)
+                            sleep 90
 
-                        curl "http://${ZAP_HOST}:${ZAP_PORT}/JSON/ascan/action/scan/?url=http://${MASTER_IP}:30004" || true
-                        sleep 60
-
-                        curl "http://${ZAP_HOST}:${ZAP_PORT}/OTHER/core/other/htmlreport/" -o owasp-zap-report.html || true
-                    """
+                            # Generate HTML report from ZAP
+                            curl "http://${ZAP_HOST}:${ZAP_PORT}/OTHER/core/other/htmlreport/?apikey=${ZAP_API_KEY}" -o owasp-zap-report.html || true
+                        """
+                    }
                 }
             }
         }
@@ -165,9 +187,32 @@ pipeline {
     /* ---------------- POST ACTIONS ---------------- */
     post {
         always {
-            archiveArtifacts artifacts: '*-npm-audit.json, *-trivy-report.txt, owasp-zap-report.html', allowEmptyArchive: true
+            echo '=== Pipeline Execution Complete ==='
+            archiveArtifacts artifacts: 'cbs-simulator-npm-audit.json, middleware-npm-audit.json, dashboard-npm-audit.json, *-trivy-report.html, owasp-zap-report.html', allowEmptyArchive: true, fingerprint: true
+
+            // Optional: show summary in console
+            script {
+                sh """
+                    echo "=== Deployed resources (namespace: ${K8S_NAMESPACE}) ==="
+                    kubectl get all -n ${K8S_NAMESPACE} || true
+                """
+            }
         }
-        success { echo "Pipeline completed successfully!" }
-        failure { echo "Pipeline failed!" }
+        success {
+            echo '✓ Pipeline completed successfully!'
+            echo "Dashboard: http://${MASTER_IP}:30004"
+            echo "Middleware: http://${MASTER_IP}:30003"
+            echo "Simulator: http://${MASTER_IP}:30005"
+        }
+        failure {
+            echo '✗ Pipeline failed!'
+            script {
+                sh """
+                    echo "=== Final Debug Info ==="
+                    kubectl get pods -n ${K8S_NAMESPACE} -o wide || true
+                    kubectl get events -n ${K8S_NAMESPACE} --sort-by='.lastTimestamp' | tail -n 50 || true
+                """
+            }
+        }
     }
 }
