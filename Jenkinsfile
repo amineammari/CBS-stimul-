@@ -10,14 +10,14 @@ pipeline {
         KUBECONFIG = '/var/lib/jenkins/.kube/config'
 
         // Tool Containers (master IP where docker-compose runs)
-        SONAR_HOST = 'http://192.168.72.162:9000'
-        ZAP_HOST = '192.168.72.162'
+        SONAR_HOST = 'http://192.168.72.130:9000'
+        ZAP_HOST = '192.168.72.130'
         ZAP_PORT = '8090'
 
         // Cluster Nodes
-        MASTER_IP = '192.168.72.162'
-        WORKER1_IP = '192.168.72.163'
-        WORKER2_IP = '192.168.72.164'
+        MASTER_IP = '192.168.72.130'
+        WORKER1_IP = '192.168.72.131'
+        WORKER2_IP = '192.168.72.132'
     }
 
     options {
@@ -164,21 +164,19 @@ pipeline {
             steps {
                 script {
                     echo "=== Starting OWASP ZAP Spider (via running zap daemon) ==="
-                    withCredentials([string(credentialsId: 'owasp-zap-api-key', variable: 'ZAP_API_KEY')]) {
-                        sh """
-                            # Spider the dashboard URL
-                            curl "http://${ZAP_HOST}:${ZAP_PORT}/JSON/spider/action/scan/?apikey=${ZAP_API_KEY}&url=http://${MASTER_IP}:30004" || true
-                            sleep 30
+                    sh """
+                        # Spider the dashboard URL
+                        curl "http://${ZAP_HOST}:${ZAP_PORT}/JSON/spider/action/scan/?url=http://${MASTER_IP}:30004" || true
+                        sleep 30
 
-                            # Active scan (may be slow)
-                            curl "http://${ZAP_HOST}:${ZAP_PORT}/JSON/ascan/action/scan/?apikey=${ZAP_API_KEY}&url=http://${MASTER_IP}:30004" || true
-                            # wait longer for active scan to progress (adjust as needed)
-                            sleep 90
+                        # Active scan (may be slow)
+                        curl "http://${ZAP_HOST}:${ZAP_PORT}/JSON/ascan/action/scan/?url=http://${MASTER_IP}:30004" || true
+                        # wait longer for active scan to progress (adjust as needed)
+                        sleep 90
 
-                            # Generate HTML report from ZAP
-                            curl "http://${ZAP_HOST}:${ZAP_PORT}/OTHER/core/other/htmlreport/?apikey=${ZAP_API_KEY}" -o owasp-zap-report.html || true
-                        """
-                    }
+                        # Generate HTML report from ZAP
+                        curl "http://${ZAP_HOST}:${ZAP_PORT}/OTHER/core/other/htmlreport/" -o owasp-zap-report.html || true
+                    """
                 }
             }
         }
